@@ -142,3 +142,74 @@ def someRangedEnemies(state, currentTick):
 
 def lowTimeRemaining(state, currentTick):
     return currentTick >= (tickOfEnd - 500)
+
+actionMapping = {
+    "attack": [1, 0, 0, 0, 0, 0, 0, 0, 0],
+    "move_right": [0, 1, 0, 0, 0, 0, 0, 0, 0],
+    "move_left": [0, 0, 1, 0, 0, 0, 0, 0, 0],
+    "move_backward": [0, 0, 0, 1, 0, 0, 0, 0, 0],
+    "move_forward": [0, 0, 0, 0, 1, 0, 0, 0, 0],
+    "turn_right": [0, 0, 0, 0, 0, 1, 0, 0, 0],
+    "turn_left": [0, 0, 0, 0, 0, 0, 1, 0, 0],
+    "select_shotgun": [0, 0, 0, 0, 0, 0, 0, 1, 0],
+    "select_chaingun": [0, 0, 0, 0, 0, 0, 0, 0, 1]
+}
+
+previousAction = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+class RealActions:
+    def __init__(self):
+        self.finished = True
+    def activateAction(self):
+        self.finished = False
+    def deactivateAction(self):
+        self.finished = True
+
+class SwitchWeapon(RealActions):
+    def activateAction(self):
+        self.calledWeaponSwitch = False
+        super().activateAction()
+        
+    def updateTickAndReturnAction(self, state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
+        if not self.calledWeaponSwitch:
+            self.weaponToSwitchTo = "chaingun" if currentWeapon == 3 else "shotgun"
+            self.calledWeaponSwitch = True
+            return previousAction + actionMapping[f"select_{self.weaponToSwitchTo}"]
+        
+        if((self.weaponToSwitchTo == "chaingun" and self.currentWeapon == 4) or (self.weaponToSwitchTo == "shotgun" and self.currentWeapon == 3)):
+            self.deactivateAction()
+
+        return previousAction
+            
+class FireAndStrafe(RealActions):
+    def updateTickAndReturnAction(self, state):
+        pass
+
+class DirectlyFlee(RealActions):
+    def updateTickAndReturnAction(self, state):
+        pass
+
+class GoToHealth(RealActions):
+    def updateTickAndReturnAction(self,state):
+        pass
+
+class GoToAmmo(RealActions):
+    def updateTickAndReturnAction(self, state):
+        pass
+
+class GoToArmor(RealActions):
+    def updateTickAndReturnAction(self, state):
+        pass
+
+class MoveRandom(RealActions):
+    def updateTickAndReturnAction(self, state):
+        pass
+
+class RunAway(RealActions):
+    def updateTickAndReturnAction(self, state):
+        pass
+
+class ChargeIn(RealActions):
+    def updateTickAndReturnAction(self, state):
+        pass
