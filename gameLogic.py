@@ -5,31 +5,31 @@ lastTickHurtCalled = -200
 previousHealth = 100
 tickOfEnd = 4200
 
-def lowHealthCondition(state):
+def lowHealthCondition(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     return health <= 33.3
 
-def mediumHealthCondition(state):
+def mediumHealthCondition(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     return health > 33 and health <= 66.6
 
-def highHealthCondition(state):
+def highHealthCondition(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     return health > 66.6
 
-def lowArmorCondition(state):
+def lowArmorCondition(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     return armor <= 33.3
 
-def mediumArmorCondition(state):
+def mediumArmorCondition(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     return armor > 33 and armor <= 66.6
 
-def highArmorCondition(state):
+def highArmorCondition(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     return armor > 66.6
 
-def lowAmmoCurrent(state):
+def lowAmmoCurrent(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     # if super shotgun
     if(currentWeapon == 3):
@@ -37,11 +37,11 @@ def lowAmmoCurrent(state):
     # otherwise, chaingun
     return secondWepAmmo < 40
 
-def wieldingChaingun(state):
+def wieldingChaingun(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     return currentWeapon == 4
 
-def nearbyEnemy(state):
+def nearbyEnemy(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     # TO DO: REST OF THIS
     # ideal distance is probably 200
@@ -63,7 +63,7 @@ def recentlyHurt(state, currentTick):
     lastTickHurtCalled = currentTick
     return False
 
-def healthNearby(state):
+def healthNearby(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     # TO DO: REST OF THIS
     # ideal distance is probably 200
@@ -75,7 +75,7 @@ def healthNearby(state):
     
     return False
 
-def ammo3Nearby(state):
+def ammo3Nearby(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     # TO DO: REST OF THIS
     # ideal distance is probably 200
@@ -87,7 +87,7 @@ def ammo3Nearby(state):
     
     return False
 
-def ammo4Nearby(state):
+def ammo4Nearby(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     # TO DO: REST OF THIS
     # ideal distance is probably 200
@@ -99,7 +99,7 @@ def ammo4Nearby(state):
     
     return False
 
-def armorNearby(state):
+def armorNearby(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     # TO DO: REST OF THIS
     # ideal distance is probably 200
@@ -111,7 +111,7 @@ def armorNearby(state):
     
     return False
 
-def manyEnemies(state):
+def manyEnemies(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     count = 0
     for object in state.objects:
@@ -120,7 +120,7 @@ def manyEnemies(state):
     
     return count >= 6
 
-def noEnemies(state):
+def noEnemies(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     count = 0
     for object in state.objects:
@@ -129,7 +129,7 @@ def noEnemies(state):
     
     return count == 0
 
-def someRangedEnemies(state):
+def someRangedEnemies(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     # TO DO: REST OF THIS
     # ideal distance is probably 200
