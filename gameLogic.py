@@ -1,3 +1,4 @@
+import math
 nonEnemyObjects = ["Stimpack", "Medikit", "HealthBonus", "ClipBox", "DoomPlayer", "BlueArmor", "ShellBox", "TeleportFog", "BaronBall", "BulletPuff", "Blood"]
 distanceUntilTooClose = 200
 ticksFor5Seconds = 175
@@ -164,6 +165,48 @@ class RealActions:
         self.finished = False
     def deactivateAction(self):
         self.finished = True
+    def findDirectionToFaceObject(self, playerObjX, playerObjY, playerAngle, targetObjX, targetObjY):
+        offsetVector = (targetObjX - playerObjX, targetObjY - playerObjY)
+
+        objectDeg = math.degrees(math.atan2(offsetVector[1], offsetVector[0])) + 180
+
+        angleClockwise = abs(objectDeg - playerAngle)
+
+        if(angleClockwise > 180):
+            angleMagnitude = 360 - angleClockwise
+            if(objectDeg - playerAngle > 0):
+                return (angleMagnitude, actionMapping["turn_right"])
+            return (angleMagnitude, actionMapping["turn_left"])
+        else:
+            if(objectDeg - playerAngle > 0):
+                return (angleClockwise, actionMapping["turn_left"])
+            return (angleClockwise, actionMapping["turn_right"])
+        
+    '''
+    meaning of targetVector parameter:
+    0 = wants to move towards them
+    90 = wants to move to left of them
+    180 = want to move away from em
+    270 = want to move to right of them 
+    '''
+    def findMovementToMoveRelativeToObject(self, playerObjX, playerObjY, playerAngle, targetObjX, targetObjY, targetVector):
+        (_, trueActionVector) = self.findDirectionToFaceObject(playerObjX, playerObjY, playerAngle, targetObjX, targetObjY)
+        (tempAngleVal, tempAngleDirection) = self.findDirectionToFaceObject(playerObjX, playerObjY, (playerAngle + targetVector) % 360, targetObjX, targetObjY)
+
+        
+        leftRightMovementFactor = actionMapping["move_left"] if tempAngleDirection == actionMapping["turn_left"] else actionMapping["move_right"]
+        if(tempAngleVal < 1):
+            trueActionVector += actionMapping["move_forward"]
+        elif(tempAngleVal < 89):
+            trueActionVector += leftRightMovementFactor + actionMapping["move_forward"]
+        elif(tempAngleVal < 91):
+            trueActionVector += leftRightMovementFactor
+        elif(tempAngleVal < 179):
+            trueActionVector += leftRightMovementFactor + actionMapping["move_backward"]
+        else:
+            trueActionVector += actionMapping["move_backward"]
+
+        return trueActionVector
 
 class SwitchWeapon(RealActions):
     def activateAction(self):
@@ -181,35 +224,44 @@ class SwitchWeapon(RealActions):
             self.deactivateAction()
 
         return previousAction
-            
+                
 class FireAndStrafe(RealActions):
-    def updateTickAndReturnAction(self, state):
+    def updateTickAndReturnAction(self, state):        
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         pass
 
 class DirectlyFlee(RealActions):
     def updateTickAndReturnAction(self, state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         pass
 
 class GoToHealth(RealActions):
     def updateTickAndReturnAction(self,state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         pass
 
 class GoToAmmo(RealActions):
     def updateTickAndReturnAction(self, state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         pass
 
 class GoToArmor(RealActions):
     def updateTickAndReturnAction(self, state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         pass
 
 class MoveRandom(RealActions):
     def updateTickAndReturnAction(self, state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         pass
 
 class RunAway(RealActions):
     def updateTickAndReturnAction(self, state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         pass
 
 class ChargeIn(RealActions):
     def updateTickAndReturnAction(self, state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
+         
         pass
