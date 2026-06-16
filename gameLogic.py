@@ -1,3 +1,4 @@
+import random
 import math
 nonEnemyObjects = ["Stimpack", "Medikit", "HealthBonus", "ClipBox", "DoomPlayer", "BlueArmor", "ShellBox", "TeleportFog", "BaronBall", "BulletPuff", "Blood"]
 distanceUntilTooClose = 200
@@ -144,6 +145,20 @@ def someRangedEnemies(state, currentTick):
 def lowTimeRemaining(state, currentTick):
     return currentTick >= (tickOfEnd - 500)
 
+def getClosestEnemyPosition(currentX, currentY, state):
+    closestDistance = None
+    closestDistanceCoords = (0, 0)
+    for object in state.objects:
+       if(object.name not in nonEnemyObjects):
+           playerDistance = ((object.position_x - currentX)**2 + (object.posiition_y - currentY) **2) ** (1/2)
+           if(closestDistance == None or playerDistance < closestDistance):
+               closestDistance = playerDistance
+               closestDistanceCoords = (object.position_x, object.position_y)
+
+    if(closestDistance == None):
+        return False, None, None
+    return True, closestDistanceCoords[0], closestDistanceCoords[1]
+
 actionMapping = {
     "attack": [1, 0, 0, 0, 0, 0, 0, 0, 0],
     "move_right": [0, 1, 0, 0, 0, 0, 0, 0, 0],
@@ -188,10 +203,11 @@ class RealActions:
     90 = wants to move to left of them
     180 = want to move away from em
     270 = want to move to right of them 
+    ...and everything in between for more nuanced movement
     '''
-    def findMovementToMoveRelativeToObject(self, playerObjX, playerObjY, playerAngle, targetObjX, targetObjY, targetVector):
-        (_, trueActionVector) = self.findDirectionToFaceObject(playerObjX, playerObjY, playerAngle, targetObjX, targetObjY)
-        (tempAngleVal, tempAngleDirection) = self.findDirectionToFaceObject(playerObjX, playerObjY, (playerAngle + targetVector) % 360, targetObjX, targetObjY)
+    def findMovementToMoveRelativeToObject(self, playerObjX, playerObjY, playerAngle, targetObjX, targetObjY, angleOffset):
+        (trueAngleVal, trueActionVector) = self.findDirectionToFaceObject(playerObjX, playerObjY, playerAngle, targetObjX, targetObjY)
+        (tempAngleVal, tempAngleDirection) = self.findDirectionToFaceObject(playerObjX, playerObjY, (playerAngle + angleOffset) % 360, targetObjX, targetObjY)
 
         
         leftRightMovementFactor = actionMapping["move_left"] if tempAngleDirection == actionMapping["turn_left"] else actionMapping["move_right"]
@@ -206,7 +222,7 @@ class RealActions:
         else:
             trueActionVector += actionMapping["move_backward"]
 
-        return trueActionVector
+        return trueActionVector, trueAngleVal
 
 class SwitchWeapon(RealActions):
     def activateAction(self):
@@ -225,10 +241,31 @@ class SwitchWeapon(RealActions):
 
         return previousAction
                 
+TICKS_FIREANDSTRAFE_IS_ACTIVE = 100
 class FireAndStrafe(RealActions):
+    def activateAction(self):
+        self.strafeDirection = 90 if random.random() > 0.5 else 270
+        self.currentTick = 0
+        super().activateAction()
     def updateTickAndReturnAction(self, state):        
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
-        pass
+        success, enemyX, enemyY = getClosestEnemyPosition(posX, posY, state)
+        if(not success):
+            self.deactivateAction()
+            return previousAction
+        
+        chosenAction, angle = self.findMovementToMoveRelativeToObject(posX, posY, angle, enemyX, enemyY, self.strafeDirection)
+
+        
+        if(angle < 1):
+            chosenAction += actionMapping["attack"]
+
+        self.currentTick += 1
+        if(self.currentTick >= TICKS_FIREANDSTRAFE_IS_ACTIVE):
+            self.deactivateAction()
+
+        previousAction = chosenAction
+        return chosenAction
 
 class DirectlyFlee(RealActions):
     def updateTickAndReturnAction(self, state):
