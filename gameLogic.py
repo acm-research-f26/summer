@@ -6,6 +6,8 @@ ticksFor5Seconds = 175
 lastTickHurtCalled = -200
 previousHealth = 100
 tickOfEnd = 4200
+xBounds = [-225, 1225]
+yBounds = [-225, 1250]
 
 def lowHealthCondition(state, currentTick):
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
@@ -145,19 +147,30 @@ def someRangedEnemies(state, currentTick):
 def lowTimeRemaining(state, currentTick):
     return currentTick >= (tickOfEnd - 500)
 
-def getClosestEnemyPosition(currentX, currentY, state):
-    closestDistance = None
+def evaluatedCheckedCondition(state, condition):
+    if(condition == "NearestEnemy"):
+        return object.name not in nonEnemyObjects
+    elif(condition == "NearestMedkit"):
+        return object.name == "Medikit"
+    elif(condition == "shells"):
+        return object.name == "ShellBox"
+    elif(condition == "clips"):
+        return object.name == "ClipBox"
+    elif(condition == "armor"):
+        return object.name == "BlueArmor"
+
+def getClosestObjPosition(currentX, currentY, state, checkedCondition):
     closestDistanceCoords = (0, 0)
+    objectCountPassing = 0
     for object in state.objects:
-       if(object.name not in nonEnemyObjects):
+       if(evaluatedCheckedCondition(state, checkedCondition)):
+           objectCountPassing += 1
            playerDistance = ((object.position_x - currentX)**2 + (object.posiition_y - currentY) **2) ** (1/2)
            if(closestDistance == None or playerDistance < closestDistance):
                closestDistance = playerDistance
                closestDistanceCoords = (object.position_x, object.position_y)
 
-    if(closestDistance == None):
-        return False, None, None
-    return True, closestDistanceCoords[0], closestDistanceCoords[1]
+    return objectCountPassing, closestDistanceCoords[0], closestDistanceCoords[1]
 
 actionMapping = {
     "attack": [1, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -176,7 +189,7 @@ previousAction = [0, 0, 0, 0, 0, 0, 0, 0, 0]
 class RealActions:
     def __init__(self):
         self.finished = True
-    def activateAction(self):
+    def activateAction(self, state):
         self.finished = False
     def deactivateAction(self):
         self.finished = True
@@ -225,36 +238,34 @@ class RealActions:
         return trueActionVector, trueAngleVal
 
 class SwitchWeapon(RealActions):
-    def activateAction(self):
-        self.calledWeaponSwitch = False
-        super().activateAction()
+    def activateAction(self, state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
+        self.weaponToSwitchTo = "chaingun" if currentWeapon == 3 else "shotgun"
+        previousAction += actionMapping[f"select_{self.weaponToSwitchTo}"]
+        super().activateAction(state)
         
     def updateTickAndReturnAction(self, state):
-        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
-        if not self.calledWeaponSwitch:
-            self.weaponToSwitchTo = "chaingun" if currentWeapon == 3 else "shotgun"
-            self.calledWeaponSwitch = True
-            return previousAction + actionMapping[f"select_{self.weaponToSwitchTo}"]
-        
-        if((self.weaponToSwitchTo == "chaingun" and self.currentWeapon == 4) or (self.weaponToSwitchTo == "shotgun" and self.currentWeapon == 3)):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables        
+        if((self.weaponToSwitchTo == "chaingun" and currentWeapon == 4) or (self.weaponToSwitchTo == "shotgun" and currentWeapon == 3)):
             self.deactivateAction()
 
         return previousAction
                 
 TICKS_FIREANDSTRAFE_IS_ACTIVE = 100
+
 class FireAndStrafe(RealActions):
-    def activateAction(self):
+    def activateAction(self, state):
         self.strafeDirection = 90 if random.random() > 0.5 else 270
         self.currentTick = 0
-        super().activateAction()
+        super().activateAction(state)
     def updateTickAndReturnAction(self, state):        
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
-        success, enemyX, enemyY = getClosestEnemyPosition(posX, posY, state)
-        if(not success):
+        count, targetX, targetY = getClosestObjPosition(posX, posY, state, "NearestEnemy")
+        if(count == 0):
             self.deactivateAction()
             return previousAction
         
-        chosenAction, angle = self.findMovementToMoveRelativeToObject(posX, posY, angle, enemyX, enemyY, self.strafeDirection)
+        chosenAction, angle = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, self.strafeDirection)
 
         
         if(angle < 1):
@@ -267,38 +278,227 @@ class FireAndStrafe(RealActions):
         previousAction = chosenAction
         return chosenAction
 
+TICKS_DIRECTLYFLEE_IS_ACTIVE = 250
+
 class DirectlyFlee(RealActions):
+    def activateAction(self, state):
+        self.strafeDirection = 135 if random.random() > 0.5 else 225
+        self.currentTick = 0
+        super().activateAction(state)
     def updateTickAndReturnAction(self, state):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
-        pass
+        count, targetX, targetY = getClosestObjPosition(posX, posY, state, "NearestEnemy")
+        if(count == 0):
+            self.deactivateAction()
+            return previousAction
+        
+        chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, self.strafeDirection)
+        
+        self.currentTick += 1
+        if(self.currentTick >= TICKS_DIRECTLYFLEE_IS_ACTIVE):
+            self.deactivateAction()
 
+        previousAction = chosenAction
+        return chosenAction
+        
 class GoToHealth(RealActions):
+    def activateAction(self, state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
+        self.prevHealth = health
+        self.maxHealth = 100
+        super().activateAction(state)
     def updateTickAndReturnAction(self,state):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
-        pass
 
+        if(health >= self.maxHealth):
+            if(self.prevHealth < self.health):
+                # ok good, so we won
+                self.deactivateAction()
+                return previousAction
+            else:
+                # do punishment here!
+                self.deactivateAction()
+                return previousAction
+        
+
+
+        count, targetX, targetY = getClosestObjPosition(posX, posY, state, "Medikit")
+        if(count == 0):
+            self.deactivateAction()
+            # DO SOME PUNISHMENT!
+            return previousAction
+        
+        if(health > self.prevHealth):
+            self.deactivateAction()
+            return previousAction
+        
+        chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, 0)
+        
+        previousAction = chosenAction
+        self.prevHealth = health
+        return chosenAction
 class GoToAmmo(RealActions):
-    def updateTickAndReturnAction(self, state):
+    def activateAction(self, state):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
-        pass
+        self.ammoTypeToGet = "shells" if currentWeapon == 3 else "clips"
+        self.prevAmmo = firstWepAmmo if currentWeapon == 3 else secondWepAmmo
+        self.maxAmmo = 50 if currentWeapon == 3 else 200
+        super().activateAction(state)
+    def updateTickAndReturnAction(self,state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
+        currentAmmo = firstWepAmmo if currentWeapon == 3 else secondWepAmmo
+
+        if(currentAmmo == self.maxAmmo):
+            if(self.prevAmmo < currentAmmo):
+                # ok good, so we won
+                self.deactivateAction()
+                return previousAction
+            else:
+                # do punishment here!
+                self.deactivateAction()
+                return previousAction
+        
+
+
+        count, targetX, targetY = getClosestObjPosition(posX, posY, state, self.ammoTypeToGet)
+        if(count == 0):
+            self.deactivateAction()
+            # DO SOME PUNISHMENT!
+            return previousAction
+        
+        if(currentAmmo > self.prevAmmo):
+            self.deactivateAction()
+            return previousAction
+        
+        chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, 0)
+        
+        previousAction = chosenAction
+        self.prevAmmo = currentAmmo
+        return chosenAction
+    
 class GoToArmor(RealActions):
-    def updateTickAndReturnAction(self, state):
+    def activateAction(self, state):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
-        pass
+        self.prevArmor = armor
+        self.maxArmor = 200
+        super().activateAction(state)
+    def updateTickAndReturnAction(self,state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
+        if(armor == self.maxArmor):
+            if(self.prevArmor < armor):
+                # ok good, so we won
+                self.deactivateAction()
+                return previousAction
+            else:
+                # do punishment here!
+                self.deactivateAction()
+                return previousAction
+        
+
+
+        count, targetX, targetY = getClosestObjPosition(posX, posY, state, "armor")
+        if(count == 0):
+            self.deactivateAction()
+            # DO SOME PUNISHMENT!
+            return previousAction
+        
+        if(armor > self.prevArmor):
+            self.deactivateAction()
+            return previousAction
+        
+        chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, 0)
+        
+        previousAction = chosenAction
+        self.prevArmor = armor
+        return chosenAction
+    
 class MoveRandom(RealActions):
+    def activateAction(self, state):
+        health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
+        self.targetPoint = (random.random() * (xBounds[1] - xBounds[0]) + xBounds[0], random.random() * (yBounds[1] - yBounds[0]) + yBounds[0])
+        super().activateAction(state)
     def updateTickAndReturnAction(self, state):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
-        pass
+
+        if ((((posY - self.targetPoint[1]) ** 2 + (posX - self.targetPoint[0]) ** 2) ** (1/2)) < distanceUntilTooClose / 2):
+            self.deactivateAction()
+            return previousAction
+
+        chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, self.targetPoint[0], self.targetPoint[1], 0)
+
+        previousAction = chosenAction
+        return chosenAction
+    
+def computeEnemyCentroid(state):
+    positionArrays = []
+    for object in state.objects:
+       if(object.name not in nonEnemyObjects):
+           positionArrays.append((object.position_x, object.position_y))
+    
+    if(len(positionArrays > 0)):
+        return (True, sum(enemy[0] for enemy in positionArrays) / len(positionArrays), sum(enemy[1] for enemy in positionArrays) / len(positionArrays))
+    return (False, None, None)
+
+def findBestRunwaySpot(state):
+    success, centerX, centerY = computeEnemyCentroid(state)
+    if not success:
+        return None
+
+    possibleXVals = np.linspace(xBounds[0], xBounds[1], 3)
+    possibleYVals = np.linspace(yBounds[0], yBounds[1], 3)
+
+    bestTarget = (0, 0)
+    bestDistance = 100000000
+
+    for x in possibleXVals:
+        for y in possibleYVals:
+            currentDist = ((centerY - y) ** 2 + (centerX - x) ** 2) ** (1/2)
+            if (currentDist < bestDistance):
+                bestTarget = (x, y)
+                bestDistance = currentDist
+
+    return bestTarget
 
 class RunAway(RealActions):
+    def activateAction(self, state):
+        self.target = findBestRunwaySpot(state)
+        super().activateAction(state)
     def updateTickAndReturnAction(self, state):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
-        pass
+
+        if(self.target == None):
+            # punish first
+            self.deactivateAction()
+            return previousAction
+
+        if ((((posY - self.target[1]) ** 2 + (posX - self.target[0]) ** 2) ** (1/2)) < distanceUntilTooClose * 2):
+            self.deactivateAction()
+            return previousAction
+
+        chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, self.target[0], self.target[1], 0)
+
+        previousAction = chosenAction
+        return chosenAction
 
 class ChargeIn(RealActions):
+    def activateAction(self, state):
+        super().activateAction(state)
     def updateTickAndReturnAction(self, state):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
-         
-        pass
+        hasEnemies, targetX, targetY = computeEnemyCentroid(state)
+
+        if(not hasEnemies):
+            # punish here
+            self.deactivateAction()
+            return previousAction
+
+        if ((((posY - targetY) ** 2 + (posX - targetX) ** 2) ** (1/2)) < distanceUntilTooClose * 3):
+            self.deactivateAction()
+            return previousAction
+
+        chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, 0)
+
+        previousAction = chosenAction
+        return chosenAction
