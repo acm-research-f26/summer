@@ -1,5 +1,7 @@
 import random
 import math
+
+import numpy as np
 nonEnemyObjects = ["Stimpack", "Medikit", "HealthBonus", "ClipBox", "DoomPlayer", "BlueArmor", "ShellBox", "TeleportFog", "BaronBall", "BulletPuff", "Blood"]
 distanceUntilTooClose = 200
 ticksFor5Seconds = 175
@@ -51,20 +53,21 @@ def nearbyEnemy(state, currentTick):
     # ideal distance is probably 200
     for object in state.objects:
        if(object.name not in nonEnemyObjects):
-           playerDistance = ((object.position_x - posX)**2 + (object.posiition_y - posY) **2) ** (1/2)
+           playerDistance = ((object.position_x - posX)**2 + (object.position_y - posY) **2) ** (1/2)
            if(playerDistance < distanceUntilTooClose):
                return True
     
     return False
 
 def recentlyHurt(state, currentTick):
+    global previousHealth, lastTickHurtCalled, previousAction
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
     if(health < previousHealth):
         previousHealth = health
         if(currentTick - lastTickHurtCalled < ticksFor5Seconds):
             lastTickHurtCalled = currentTick
             return True
-    lastTickHurtCalled = currentTick
+        lastTickHurtCalled = currentTick
     return False
 
 def healthNearby(state, currentTick):
@@ -73,7 +76,7 @@ def healthNearby(state, currentTick):
     # ideal distance is probably 200
     for object in state.objects:
        if(object.name == "Medikit"):
-           playerDistance = ((object.position_x - posX)**2 + (object.posiition_y - posY) **2) ** (1/2)
+           playerDistance = ((object.position_x - posX)**2 + (object.position_y - posY) **2) ** (1/2)
            if(playerDistance < distanceUntilTooClose):
                return True
     
@@ -85,7 +88,7 @@ def ammo3Nearby(state, currentTick):
     # ideal distance is probably 200
     for object in state.objects:
        if(object.name == "ShellBox"):
-           playerDistance = ((object.position_x - posX)**2 + (object.posiition_y - posY) **2) ** (1/2)
+           playerDistance = ((object.position_x - posX)**2 + (object.position_y - posY) **2) ** (1/2)
            if(playerDistance < distanceUntilTooClose):
                return True
     
@@ -97,7 +100,7 @@ def ammo4Nearby(state, currentTick):
     # ideal distance is probably 200
     for object in state.objects:
        if(object.name == "ClipBox"):
-           playerDistance = ((object.position_x - posX)**2 + (object.posiition_y - posY) **2) ** (1/2)
+           playerDistance = ((object.position_x - posX)**2 + (object.position_y - posY) **2) ** (1/2)
            if(playerDistance < distanceUntilTooClose):
                return True
     
@@ -109,7 +112,7 @@ def armorNearby(state, currentTick):
     # ideal distance is probably 200
     for object in state.objects:
        if(object.name == "BlueArmor"):
-           playerDistance = ((object.position_x - posX)**2 + (object.posiition_y - posY) **2) ** (1/2)
+           playerDistance = ((object.position_x - posX)**2 + (object.position_y - posY) **2) ** (1/2)
            if(playerDistance < distanceUntilTooClose):
                return True
     
@@ -147,7 +150,7 @@ def someRangedEnemies(state, currentTick):
 def lowTimeRemaining(state, currentTick):
     return currentTick >= (tickOfEnd - 500)
 
-def evaluatedCheckedCondition(state, condition):
+def evaluatedCheckedCondition(object, condition):
     if(condition == "NearestEnemy"):
         return object.name not in nonEnemyObjects
     elif(condition == "NearestMedkit"):
@@ -161,11 +164,12 @@ def evaluatedCheckedCondition(state, condition):
 
 def getClosestObjPosition(currentX, currentY, state, checkedCondition):
     closestDistanceCoords = (0, 0)
+    closestDistance = None
     objectCountPassing = 0
     for object in state.objects:
-       if(evaluatedCheckedCondition(state, checkedCondition)):
+       if(evaluatedCheckedCondition(object, checkedCondition)):
            objectCountPassing += 1
-           playerDistance = ((object.position_x - currentX)**2 + (object.posiition_y - currentY) **2) ** (1/2)
+           playerDistance = ((object.position_x - currentX)**2 + (object.position_y - currentY) **2) ** (1/2)
            if(closestDistance == None or playerDistance < closestDistance):
                closestDistance = playerDistance
                closestDistanceCoords = (object.position_x, object.position_y)
@@ -239,6 +243,7 @@ class RealActions:
 
 class SwitchWeapon(RealActions):
     def activateAction(self, state):
+        global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         self.weaponToSwitchTo = "chaingun" if currentWeapon == 3 else "shotgun"
         previousAction += actionMapping[f"select_{self.weaponToSwitchTo}"]
@@ -259,6 +264,7 @@ class FireAndStrafe(RealActions):
         self.currentTick = 0
         super().activateAction(state)
     def updateTickAndReturnAction(self, state):        
+        global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         count, targetX, targetY = getClosestObjPosition(posX, posY, state, "NearestEnemy")
         if(count == 0):
@@ -286,6 +292,7 @@ class DirectlyFlee(RealActions):
         self.currentTick = 0
         super().activateAction(state)
     def updateTickAndReturnAction(self, state):
+        global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         count, targetX, targetY = getClosestObjPosition(posX, posY, state, "NearestEnemy")
         if(count == 0):
@@ -308,6 +315,7 @@ class GoToHealth(RealActions):
         self.maxHealth = 100
         super().activateAction(state)
     def updateTickAndReturnAction(self,state):
+        global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
         if(health >= self.maxHealth):
@@ -345,6 +353,7 @@ class GoToAmmo(RealActions):
         self.maxAmmo = 50 if currentWeapon == 3 else 200
         super().activateAction(state)
     def updateTickAndReturnAction(self,state):
+        global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
         currentAmmo = firstWepAmmo if currentWeapon == 3 else secondWepAmmo
@@ -384,6 +393,7 @@ class GoToArmor(RealActions):
         self.maxArmor = 200
         super().activateAction(state)
     def updateTickAndReturnAction(self,state):
+        global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
         if(armor == self.maxArmor):
@@ -420,6 +430,7 @@ class MoveRandom(RealActions):
         self.targetPoint = (random.random() * (xBounds[1] - xBounds[0]) + xBounds[0], random.random() * (yBounds[1] - yBounds[0]) + yBounds[0])
         super().activateAction(state)
     def updateTickAndReturnAction(self, state):
+        global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
         if ((((posY - self.targetPoint[1]) ** 2 + (posX - self.targetPoint[0]) ** 2) ** (1/2)) < distanceUntilTooClose / 2):
@@ -437,7 +448,7 @@ def computeEnemyCentroid(state):
        if(object.name not in nonEnemyObjects):
            positionArrays.append((object.position_x, object.position_y))
     
-    if(len(positionArrays > 0)):
+    if(len(positionArrays) > 0):
         return (True, sum(enemy[0] for enemy in positionArrays) / len(positionArrays), sum(enemy[1] for enemy in positionArrays) / len(positionArrays))
     return (False, None, None)
 
@@ -466,6 +477,7 @@ class RunAway(RealActions):
         self.target = findBestRunwaySpot(state)
         super().activateAction(state)
     def updateTickAndReturnAction(self, state):
+        global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
         if(self.target == None):
@@ -486,6 +498,7 @@ class ChargeIn(RealActions):
     def activateAction(self, state):
         super().activateAction(state)
     def updateTickAndReturnAction(self, state):
+        global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         hasEnemies, targetX, targetY = computeEnemyCentroid(state)
 
