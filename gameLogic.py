@@ -200,19 +200,26 @@ class RealActions:
     def findDirectionToFaceObject(self, playerObjX, playerObjY, playerAngle, targetObjX, targetObjY):
         offsetVector = (targetObjX - playerObjX, targetObjY - playerObjY)
 
-        objectDeg = math.degrees(math.atan2(offsetVector[1], offsetVector[0])) + 180
+        objectDeg = math.degrees(math.atan2(offsetVector[1], offsetVector[0])) % 360
 
-        angleClockwise = abs(objectDeg - playerAngle)
+        playerAngle = (playerAngle + 90) % 360
+        objectDeg = (objectDeg + 90) % 360
 
-        if(angleClockwise > 180):
-            angleMagnitude = 360 - angleClockwise
-            if(objectDeg - playerAngle > 0):
-                return (angleMagnitude, np.copy(actionMapping["turn_right"]))
-            return (angleMagnitude, np.copy(actionMapping["turn_left"]))
+        angleDirection = objectDeg - playerAngle
+        if(abs(angleDirection) < 360 - abs(angleDirection)):
+            angleMagnitude = abs(angleDirection)
+            if angleDirection > 0:
+                print(f"moving {angleMagnitude} and turning left")
+                return (angleMagnitude, np.copy(actionMapping["turn_left"]))
+            print(f"moving {angleMagnitude} and turning right")
+            return (angleMagnitude, np.copy(actionMapping["turn_right"]))
         else:
-            if(objectDeg - playerAngle > 0):
-                return (angleClockwise, np.copy(actionMapping["turn_left"]))
-            return (angleClockwise, np.copy(actionMapping["turn_right"]))
+            angleMagnitude = 360 - abs(angleDirection)
+            if angleDirection > 0:
+                print(f"angle is {angleMagnitude} and turning right")
+                return (angleMagnitude, np.copy(actionMapping["turn_right"]))
+            print(f"angle is {angleMagnitude} and turning left")
+            return (angleMagnitude, np.copy(actionMapping["turn_left"]))
         
     '''
     meaning of targetVector parameter:
@@ -226,20 +233,24 @@ class RealActions:
         (trueAngleVal, trueActionVector) = self.findDirectionToFaceObject(playerObjX, playerObjY, playerAngle, targetObjX, targetObjY)
         (tempAngleVal, tempAngleDirection) = self.findDirectionToFaceObject(playerObjX, playerObjY, (playerAngle + angleOffset) % 360, targetObjX, targetObjY)
 
-        print(f"current angle is: {trueAngleVal}")
-
         
         leftRightMovementFactor = actionMapping["move_left"] if np.array_equal(tempAngleDirection, actionMapping["turn_left"]) else actionMapping["move_right"]
-        if(tempAngleVal < 1):
+        print(f"idea of moving left is: {np.array_equal(tempAngleDirection, actionMapping["turn_left"])}")
+        if(abs(tempAngleVal) < 1):
             trueActionVector += actionMapping["move_forward"]
-        elif(tempAngleVal < 89):
+            print("moving forward too")
+        elif(abs(tempAngleVal) < 89):
+            print("moving forward too along with left/right")
             trueActionVector += leftRightMovementFactor + actionMapping["move_forward"]
-        elif(tempAngleVal < 91):
+        elif(abs(tempAngleVal) < 91):
+            print("moving solely left/right")
             trueActionVector += leftRightMovementFactor
-        elif(tempAngleVal < 179):
+        elif(abs(tempAngleVal) < 179):
             trueActionVector += leftRightMovementFactor + actionMapping["move_backward"]
+            print("moving backward along with left/right")
         else:
             trueActionVector += actionMapping["move_backward"]
+            print("moving backward too")
 
         print(trueActionVector)
 
@@ -271,7 +282,7 @@ class FireAndStrafe(RealActions):
         global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         count, targetX, targetY = getClosestObjPosition(posX, posY, state, "NearestEnemy")
-        if(count == 0):
+        if(count == 0): 
             self.deactivateAction()
             return previousAction, -10
         
@@ -303,7 +314,13 @@ class DirectlyFlee(RealActions):
             self.deactivateAction()
             return previousAction, -10
         
+        if(abs(posX - xBounds[0]) < 50 or abs(posX - xBounds[1]) < 50 or abs(posY - yBounds[0]) or abs(posY - xBounds[1]) < 50):
+            self.deactivateAction()
+            return previousAction, 0
+        
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, self.strafeDirection)
+
+        print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}, current angle is {angle}")
         
         self.currentTick += 1
         if(self.currentTick >= TICKS_DIRECTLYFLEE_IS_ACTIVE):
@@ -375,6 +392,8 @@ class GoToAmmo(RealActions):
 
 
         count, targetX, targetY = getClosestObjPosition(posX, posY, state, self.ammoTypeToGet)
+
+        print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}, current angle is {angle}")
         if(count == 0):
             self.deactivateAction()
             # DO SOME PUNISHMENT!
@@ -414,7 +433,7 @@ class GoToArmor(RealActions):
 
         count, targetX, targetY = getClosestObjPosition(posX, posY, state, "armor")
 
-        print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}")
+        print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}, current angle is {angle}")
 
         if(count == 0):
             self.deactivateAction()
@@ -443,6 +462,8 @@ class MoveRandom(RealActions):
         if ((((posY - self.targetPoint[1]) ** 2 + (posX - self.targetPoint[0]) ** 2) ** (1/2)) < distanceUntilTooClose / 2):
             self.deactivateAction()
             return previousAction, 0
+        
+        print(f"current position is {posX}, {posY}, taret position is {self.targetPoint[0], self.targetPoint[1]}, current angle is {angle}")
 
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, self.targetPoint[0], self.targetPoint[1], 0)
 
@@ -495,6 +516,8 @@ class RunAway(RealActions):
         if ((((posY - self.target[1]) ** 2 + (posX - self.target[0]) ** 2) ** (1/2)) < distanceUntilTooClose * 2):
             self.deactivateAction()
             return previousAction, 0
+        
+        print(f"current position is {posX}, {posY}, taret position is {self.target[0], self.target[1]}, current angle is {angle}")
 
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, self.target[0], self.target[1], 0)
 
@@ -517,6 +540,8 @@ class ChargeIn(RealActions):
         if ((((posY - targetY) ** 2 + (posX - targetX) ** 2) ** (1/2)) < distanceUntilTooClose * 3):
             self.deactivateAction()
             return previousAction, 0
+        
+        print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}, current angle is {angle}")
 
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, 0)
 
