@@ -177,15 +177,15 @@ def getClosestObjPosition(currentX, currentY, state, checkedCondition):
     return objectCountPassing, closestDistanceCoords[0], closestDistanceCoords[1]
 
 actionMapping = {
-    "attack": [1, 0, 0, 0, 0, 0, 0, 0, 0],
-    "move_right": [0, 1, 0, 0, 0, 0, 0, 0, 0],
-    "move_left": [0, 0, 1, 0, 0, 0, 0, 0, 0],
-    "move_backward": [0, 0, 0, 1, 0, 0, 0, 0, 0],
-    "move_forward": [0, 0, 0, 0, 1, 0, 0, 0, 0],
-    "turn_right": [0, 0, 0, 0, 0, 1, 0, 0, 0],
-    "turn_left": [0, 0, 0, 0, 0, 0, 1, 0, 0],
-    "select_shotgun": [0, 0, 0, 0, 0, 0, 0, 1, 0],
-    "select_chaingun": [0, 0, 0, 0, 0, 0, 0, 0, 1]
+    "attack": np.array([1, 0, 0, 0, 0, 0, 0, 0, 0]),
+    "move_right": np.array([0, 1, 0, 0, 0, 0, 0, 0, 0]),
+    "move_left": np.array([0, 0, 1, 0, 0, 0, 0, 0, 0]),
+    "move_backward": np.array([0, 0, 0, 1, 0, 0, 0, 0, 0]),
+    "move_forward": np.array([0, 0, 0, 0, 1, 0, 0, 0, 0]),
+    "turn_right": np.array([0, 0, 0, 0, 0, 1, 0, 0, 0]),
+    "turn_left": np.array([0, 0, 0, 0, 0, 0, 1, 0, 0]),
+    "select_shotgun": np.array([0, 0, 0, 0, 0, 0, 0, 1, 0]),
+    "select_chaingun": np.array([0, 0, 0, 0, 0, 0, 0, 0, 1])
 }
 
 previousAction = [0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -207,12 +207,12 @@ class RealActions:
         if(angleClockwise > 180):
             angleMagnitude = 360 - angleClockwise
             if(objectDeg - playerAngle > 0):
-                return (angleMagnitude, actionMapping["turn_right"])
-            return (angleMagnitude, actionMapping["turn_left"])
+                return (angleMagnitude, np.copy(actionMapping["turn_right"]))
+            return (angleMagnitude, np.copy(actionMapping["turn_left"]))
         else:
             if(objectDeg - playerAngle > 0):
-                return (angleClockwise, actionMapping["turn_left"])
-            return (angleClockwise, actionMapping["turn_right"])
+                return (angleClockwise, np.copy(actionMapping["turn_left"]))
+            return (angleClockwise, np.copy(actionMapping["turn_right"]))
         
     '''
     meaning of targetVector parameter:
@@ -226,8 +226,10 @@ class RealActions:
         (trueAngleVal, trueActionVector) = self.findDirectionToFaceObject(playerObjX, playerObjY, playerAngle, targetObjX, targetObjY)
         (tempAngleVal, tempAngleDirection) = self.findDirectionToFaceObject(playerObjX, playerObjY, (playerAngle + angleOffset) % 360, targetObjX, targetObjY)
 
+        print(f"current angle is: {trueAngleVal}")
+
         
-        leftRightMovementFactor = actionMapping["move_left"] if tempAngleDirection == actionMapping["turn_left"] else actionMapping["move_right"]
+        leftRightMovementFactor = actionMapping["move_left"] if np.array_equal(tempAngleDirection, actionMapping["turn_left"]) else actionMapping["move_right"]
         if(tempAngleVal < 1):
             trueActionVector += actionMapping["move_forward"]
         elif(tempAngleVal < 89):
@@ -238,6 +240,8 @@ class RealActions:
             trueActionVector += leftRightMovementFactor + actionMapping["move_backward"]
         else:
             trueActionVector += actionMapping["move_backward"]
+
+        print(trueActionVector)
 
         return trueActionVector, trueAngleVal
 
@@ -409,6 +413,9 @@ class GoToArmor(RealActions):
 
 
         count, targetX, targetY = getClosestObjPosition(posX, posY, state, "armor")
+
+        print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}")
+
         if(count == 0):
             self.deactivateAction()
             # DO SOME PUNISHMENT!
