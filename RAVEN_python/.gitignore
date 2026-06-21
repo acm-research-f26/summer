@@ -8,6 +8,7 @@ __pycache__/
 /RAVEN.egg-info/
 
 *.json
+!data.json
 
 *.log
 *.sqlite3
@@ -19,3 +20,4 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+

@@ -1,4 +1,5 @@
 # create_sample_data.py
+import json
 import numpy as np
 import pandas as pd
 
@@ -50,15 +51,102 @@ def generate_sample_eeg(fs=256, duration=60, noise_std=2.0):
     signal += noise_std * np.random.randn(len(signal))
     return signal, t, events
 
-def save_sample_eeg(output_path='data/sample_eeg.csv', fs=256, duration=60):
-    signal, t, events = generate_sample_eeg(fs=fs, duration=duration)
+
+def _get_by_path(data, path):
+    if path is None:
+        return None
+    value = data
+    for key in path.split('.'):
+        if isinstance(value, dict) and key in value:
+            value = value[key]
+        else:
+            return None
+    return value
+
+
+def _find_numeric_array(data):
+    if isinstance(data, list):
+        if data and all(isinstance(x, (int, float)) for x in data):
+            return data
+        for item in data:
+            result = _find_numeric_array(item)
+            if result is not None:
+                return result
+        return None
+    if isinstance(data, dict):
+        for key in ['signal', 'eeg', 'data', 'values', 'samples', 'amplitude', 'wave']:
+            if key in data:
+                result = _find_numeric_array(data[key])
+                if result is not None:
+                    return result
+        for value in data.values():
+            result = _find_numeric_array(value)
+            if result is not None:
+                return result
+    return None
+
+
+def load_sample_eeg_from_json(input_path, fs=256, signal_key=None, time_key=None):
+    with open(input_path, 'r') as f:
+        data = json.load(f)
+
+    signal_data = _get_by_path(data, signal_key) if signal_key else None
+    if signal_data is None:
+        signal_data = _find_numeric_array(data)
+
+    if signal_data is None:
+        raise ValueError(f'No numeric signal array found in JSON: {input_path}')
+
+    signal = np.asarray(signal_data, dtype=float)
+    if time_key:
+        time_data = _get_by_path(data, time_key)
+        if time_data is None:
+            raise ValueError(f'No time array found at JSON path: {time_key}')
+        t = np.asarray(time_data, dtype=float)
+        if len(t) != len(signal):
+            raise ValueError('Time array length does not match signal length')
+    else:
+        t = np.arange(len(signal)) / fs
+
+    return signal, t, []
+
+
+def save_sample_eeg(output_path='data/sample_eeg.csv', fs=256, duration=60, input_json=None, signal_key=None, time_key=None):
+    if input_json:
+        signal, t, events = load_sample_eeg_from_json(
+            input_json,
+            fs=fs,
+            signal_key=signal_key,
+            time_key=time_key,
+        )
+    else:
+        signal, t, events = generate_sample_eeg(fs=fs, duration=duration)
     df = pd.DataFrame({'time': t, 'signal': signal})
     df.to_csv(output_path, index=False)
     print(f'Sample data saved to {output_path}')
-    print('Generated events:')
-    for event in events:
-        print(f"  - {event['label']} from {event['start']}s to {event['end']}s")
+    if events:
+        print('Generated events:')
+        for event in events:
+            print(f"  - {event['label']} from {event['start']}s to {event['end']}s")
 
 
 if __name__ == '__main__':
-    save_sample_eeg()
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Create sample EEG dataset or convert JSON dataset to CSV')
+    parser.add_argument('--output', '-o', default='data/sample_eeg.csv', help='CSV output path')
+    parser.add_argument('--fs', type=int, default=256, help='Sampling frequency for generated or JSON data')
+    parser.add_argument('--duration', type=int, default=60, help='Duration in seconds for generated data')
+    parser.add_argument('--input-json', help='Path to JSON dataset containing EEG signal data')
+    parser.add_argument('--signal-key', help='Dot-separated JSON path to the signal array')
+    parser.add_argument('--time-key', help='Dot-separated JSON path to the time array')
+    args = parser.parse_args()
+
+    save_sample_eeg(
+        output_path=args.output,
+        fs=args.fs,
+        duration=args.duration,
+        input_json=args.input_json,
+        signal_key=args.signal_key,
+        time_key=args.time_key,
+    )

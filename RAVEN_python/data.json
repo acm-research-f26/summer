@@ -1,0 +1,102 @@
+{
+  "@type": "Dataset",
+  "identifier": "10.1038/s41597-021-00977-w",
+  "title": "Metadata record for: PSG-Audio, a scored polysomnography dataset with simultaneous audio recordings for sleep apnea studies.",
+  "relatedPublications": [],
+  "repositories": [
+    {
+      "name": "Science Data Bank",
+      "value": "http://www.dx.doi.org/10.11922/sciencedb.00345",
+      "@type": "DataCatalog"
+    }
+  ],
+  "assays": [
+    {
+      "measurementType": {
+        "annotationValue": "obstructive sleep apnea",
+        "termAccession": "http://www.ebi.ac.uk/efo/EFO_0003918",
+        "termSource": "EFO",
+        "@type": "PropertyValue"
+      },
+      "technologyType": {
+        "annotationValue": "polysomnography",
+        "termAccession": "http://purl.obolibrary.org/obo/ERO_0001764",
+        "termSource": "ERO",
+        "@type": "PropertyValue"
+      },
+      "@type": "variableMeasured"
+    },
+    {
+      "measurementType": {
+        "annotationValue": "tracheal breathing sound",
+        "@type": "PropertyValue"
+      },
+      "technologyType": {
+        "annotationValue": "tracheal microphone",
+        "@type": "PropertyValue"
+      },
+      "@type": "variableMeasured"
+    },
+    {
+      "measurementType": {
+        "annotationValue": "ambient breathing sound",
+        "@type": "PropertyValue"
+      },
+      "technologyType": {
+        "annotationValue": "ambient microphone",
+        "@type": "PropertyValue"
+      },
+      "@type": "variableMeasured"
+    }
+  ],
+  "factors": [],
+  "studyCharacteristics": {
+    "organism": [
+      {
+        "annotationValue": "Homo sapiens",
+        "termAccession": "http://purl.bioontology.org/ontology/NCBITAXON/9606",
+        "termSource": "NCBITAXON",
+        "@type": "PropertyValue"
+      }
+    ],
+    "environmentType": [],
+    "geographicalLocation": [],
+    "@type": "variableMeasured"
+  },
+  "ontologySourceReferences": {
+    "EFO": {
+      "name": "EFO",
+      "description": "Experimental Factor Ontology",
+      "file": "http://data.bioontology.org/ontologies/EFO",
+      "version": "2.105",
+      "@type": "DefinedTermSet"
+    },
+    "ERO": {
+      "name": "ERO",
+      "description": "Eagle-I Research Resource Ontology",
+      "file": "http://data.bioontology.org/ontologies/ERO",
+      "version": "2013-08-02",
+      "@type": "DefinedTermSet"
+    },
+    "NCBITAXON": {
+      "name": "NCBITAXON",
+      "description": "National Center for Biotechnology Information (NCBI) Organismal Classification",
+      "file": "http://data.bioontology.org/ontologies/NCBITAXON",
+      "version": "2019AB",
+      "@type": "DefinedTermSet"
+    },
+    "@type": "CategoryCodeSet"
+  },
+  "comments": [
+    {
+      "name": "Created With Configuration",
+      "value": "1.0",
+      "@type": "SoftwareApplication"
+    },
+    {
+      "name": "Data Descriptor License",
+      "value": "CC-BY-4.0",
+      "@type": "CreativeWork"
+    }
+  ]
+}

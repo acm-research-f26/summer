@@ -1,47 +1,178 @@
-![ACM Research Banner Light](https://github.com/ACM-Research/paperImplementations/assets/108421238/467a89e3-72db-41d7-9a25-51d2c589bfd9)
+![acm research banner light](https://github.com/acm-research/paperimplementations/assets/108421238/467a89e3-72db-41d7-9a25-51d2c589bfd9)
 
-# Fall 2026 Paper Implementations
+# fall 2026 paper implementation
 
-Hello leads! Find your branch and update it with all your files and README.md (template below). Let us know if run into any access issues.
-
-Use the below README template as you work through your implementations! 
-
-<!--Remove text above the '---' -->
 ---
 
-# Headliner
+**paper:** RAVEN: software for automated sleep microstructure analysis from electroencephalography
 
-## 📌 Project Summary
-Talk about what this research is.
+### ⚲ paper summary
+RAVEN (Rhythmic Analysis of Variations in EEG Neural activity) is a novel MATLAB-based algorithm that uses idenitification of K-complexes, sleep spindles, slow oscillating delta waves, and CAP cycles in EEG signals to create a more effective & reliable way to analyze multiple sleep microstructure charactistics at once.
 
-## 🎯 Motivation
-Talk about your motivation.
+### ✰ methodology
+1. **dataset**: uses the [PSG-Audio](https://www.scidb.cn/en/detail?dataSetId=778740145531650048) dataset
+**contains:** .rml files of polysomnographys from people with obstructive sleep apnea. records tracheal breathing sound & ambient breathing sound using a tracheal microphone & an ambient microphone
+2. **architecture**: specific model used
 
-## 🧩 Novelty
-- **Something**: Sentence
-- **Something else**: Another sentence
+### ⚲ summary of my project
 
-## 🧠 Methodology
-1. **Dataset**: Uses the [X](link here) dataset of x+
-2. **Architecture**: Specific model used
+
+
+## ⌖ motivation
+talk about your motivation.
+
+## ✎ᝰ novelty
+- **something**: sentence
+- **something else**: another sentence
+
+
+
+# fall 2026 paper implementation
+
+---
+
+**paper:** RAVEN: software for automated sleep microstructure analysis from electroencephalography
+
+## ⚲ paper summary
+RAVEN (Rhythmic Analysis of Variations in EEG Neural activity) is a novel MATLAB-based algorithm that uses idenitification of K-complexes, sleep spindles, slow oscillating delta waves, and CAP cycles in EEG signals to create a more effective & reliable way to analyze multiple sleep microstructure charactistics at once.
+
+
+
+## ⌖ motivation
+talk about your motivation.
+
+## ✎ᝰ novelty
+- **something**: sentence
+- **something else**: another sentence
+
+## ✰ methodology
+1. **dataset**: uses the [x](link here) dataset of x+
+2. **architecture**: specific model used
    - 
    - 
    - 
-3. **Evaluation**:
+3. **evaluation**:
    - 
    - 
    - 
-4. **Metrics**:
+4. **metrics**:
    - 
 
-#### Additional Methodology:
-- **Something optional**: Sentence
+#### additional methodology:
+- **something optional**: sentence
 
-## 🌍 Impact
-What is the impact of your research project?
+## ⛰︎ impact
+what is the impact of your research project?
 
-#### Future Work
-- **Something optional**: Sentence
+#### future work
+- **something optional**: sentence
 
-**Additional Sources:**
-- Optional
+**additional sources:**
+- optional![acm research banner light](https://github.com/acm-research/paperimplementations/assets/108421238/467a89e3-72db-41d7-9a25-51d2c589bfd9)
+
+# fall 2026 paper implementation
+
+---
+
+**paper:** RAVEN: software for automated sleep microstructure analysis from electroencephalography
+
+## ⚲ paper summary
+RAVEN (Rhythmic Analysis of Variations in EEG Neural activity) is a novel MATLAB-based algorithm that uses idenitification of K-complexes, sleep spindles, slow oscillating delta waves, and CAP cycles in EEG signals to create a more effective & reliable way to analyze multiple sleep microstructure charactistics at once.
+
+
+
+## ⌖ motivation
+talk about your motivation.
+
+## ✎ᝰ novelty
+- **something**: sentence
+- **something else**: another sentence
+
+## ✰ methodology
+1. **dataset**: uses the [x](link here) dataset of x+
+2. **architecture**: specific model used
+   - 
+   - 
+   - 
+3. **evaluation**:
+   - 
+   - 
+   - ![acm research banner light](https://github.com/acm-research/paperimplementations/assets/108421238/467a89e3-72db-41d7-9a25-51d2c589bfd9)
+
+# fall 2026 paper implementation
+
+---
+
+**paper:** RAVEN: software for automated sleep microstructure analysis from electroencephalography
+
+## ⚲ paper summary
+RAVEN (Rhythmic Analysis of Variations in EEG Neural activity) is a novel MATLAB-based algorithm that uses idenitification of K-complexes, sleep spindles, slow oscillating delta waves, and CAP cycles in EEG signals to create a more effective & reliable way to analyze multiple sleep microstructure charactistics at once.
+
+
+
+## ⌖ motivation
+talk about your motivation.
+
+## ✎ᝰ novelty
+- **something**: sentence
+- **something else**: another sentence
+
+## ✰ methodology
+1. **dataset**: uses the [x](link here) dataset of x+
+2. **architecture**: specific model used
+   - 
+   - 
+   - 
+3. **evaluation**:
+   - 
+   - 
+   - 
+4. **metrics**:
+   - 
+
+#### additional methodology:
+- **something optional**: sentence
+
+## ⛰︎ impact
+what is the impact of your research project?
+
+#### future work
+- **something optional**: sentence
+
+**additional sources:**
+- optional
+4. **metrics**:
+   - 
+
+#### additional methodology:
+- **something optional**: sentence
+
+## ⛰︎ impact
+what is the impact of your research project?
+
+#### future work
+- **something optional**: sentence
+
+**additional sources:**
+- optional
+   - 
+   - 
+   - 
+3. **evaluation**:
+   - 
+   - 
+   - 
+4. **metrics**:
+   - 
+
+#### additional methodology:
+- **something optional**: sentence
+
+## ⛰︎ impact
+what is the impact of your research project?
+
+#### future work
+- **something optional**: sentence
+
+**additional sources:**
+- optional

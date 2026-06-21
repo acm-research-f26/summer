@@ -16,137 +16,99 @@ class SpindleDetector:
     
     def _default_thresholds(self):
         return {
-            'power_sigma': 0.3,
-            'rms_spindle': 10e-6,  # 10 μV
-            'cwt_spindle': 0.4,
-            'hilbert_std_spindle': 1.0,
-            'artifact': 100,
-            'amplitude_max': 100e-6,  # 100 μV
-            'rms_standard_max': 20e-6,  # 20 μV
+            'envelope_std_scale': 1.0,
+            'rms_spindle': 1.0,
+            'amplitude_max': 120.0,
+            'rms_standard_max': 50.0,
             'duration_min': 0.5,
-            'duration_max': 10.0
+            'duration_max': 3.0,
+            'frequency_min': 11.0,
+            'frequency_max': 16.0,
+            'artifact': 100
         }
     
     def detect(self, signal_data):
         """Detect sleep spindles"""
         events = []
-        
-        # Step 1: Clip signal
-        signal_clipped = np.clip(signal_data, -100e-6, 100e-6)
-        
-        # Step 2: Filter to sigma band
-        sigma_signal = self.sp.filter_to_band(signal_clipped, [11, 16])
-        
-        # Step 3: Filter to 4.5-30 Hz for power ratio
-        broadband_signal = self.sp.filter_to_band(signal_clipped, [4.5, 30])
-        
-        # Step 4: Calculate power
-        sigma_power, sigma_time = self.sp.moving_window_power(sigma_signal, 0.3, 2/3)
-        broad_power, broad_time = self.sp.moving_window_power(broadband_signal, 0.3, 2/3)
-        
-        # Step 5: Power ratio
-        power_ratio = sigma_power / (broad_power + 1e-10)
-        
-        # Step 6: 30-second epochs with 50% overlap
-        epoch_len = 30
-        epoch_overlap = 0.5
-        step_samples = int(epoch_len * self.fs * (1 - epoch_overlap))
-        epoch_samples = int(epoch_len * self.fs)
-        
-        for start_sample in range(0, len(signal_data) - epoch_samples, step_samples):
-            end_sample = start_sample + epoch_samples
-            epoch_data = sigma_signal[start_sample:end_sample]
-            
-            # Check if power exceeds threshold
-            epoch_power = np.mean(epoch_data ** 2)
-            if epoch_power < self.thresholds['power_sigma']:
-                continue
-            
-            # Detect spindles in epoch
-            candidates = self._detect_in_epoch(epoch_data)
-            
-            for cand in candidates:
-                abs_start = (start_sample + cand['start']) / self.fs
-                abs_end = (start_sample + cand['end']) / self.fs
-                duration = (cand['end'] - cand['start']) / self.fs
-                
-                if self.thresholds['duration_min'] <= duration <= self.thresholds['duration_max']:
-                    events.append({
-                        'start': abs_start,
-                        'end': abs_end,
-                        'duration': duration,
-                        'confidence': cand.get('confidence', 0.5)
-                    })
-        
-        return self._consolidate_events(events)
-    
-    def _detect_in_epoch(self, epoch_data):
-        """Detect spindles within a single epoch"""
-        # Apply EMD and get first IMF
-        imfs, _ = self.sp.empirical_mode_decomposition(epoch_data)
-        first_imf = imfs[0] if imfs else epoch_data
-        
-        # Compute CWT
-        cwt_coeff, freqs = self.sp.continuous_wavelet_transform(first_imf)
-        
-        # Focus on spindle band
-        freq_mask = (freqs >= 11) & (freqs <= 16)
-        spindle_cwt = np.abs(cwt_coeff[freq_mask, :])
-        
-        # Threshold CWT
-        cwt_mask = spindle_cwt > self.thresholds['cwt_spindle'] * np.max(spindle_cwt)
-        
-        # Find connected regions
+        sigma_signal = self.sp.filter_to_band(signal_data, [11, 16])
+        broadband_signal = self.sp.filter_to_band(signal_data, [4.5, 30])
+
+        envelope, _ = self.sp.hilbert_envelope(sigma_signal)
+        threshold = np.mean(envelope) + self.thresholds['envelope_std_scale'] * np.std(envelope)
+        mask = envelope > threshold
+
         from scipy.ndimage import label
-        labeled, num_features = label(cwt_mask)
-        
-        candidates = []
+        labeled, num_features = label(mask)
+
         for i in range(1, num_features + 1):
-            mask = (labeled == i)
-            idx = np.where(mask.any(axis=0))[0]
-            
+            region = (labeled == i)
+            idx = np.where(region)[0]
             if len(idx) == 0:
                 continue
-            
+
             start_idx = idx[0]
             end_idx = idx[-1]
             duration = (end_idx - start_idx) / self.fs
-            
-            if duration >= 0.5:
-                segment = epoch_data[start_idx:end_idx]
-                sigma_segment = self.sp.filter_to_band(segment, [11, 16])
-                
-                # RMS threshold
-                rms_sigma = np.sqrt(np.mean(sigma_segment ** 2))
-                if rms_sigma < self.thresholds['rms_spindle']:
-                    continue
-                
-                # Hilbert transform evaluation
-                envelope, _ = self.sp.hilbert_envelope(segment)
-                threshold = np.mean(envelope) + self.thresholds['hilbert_std_spindle'] * np.std(envelope)
-                peaks, _ = find_peaks(envelope, height=threshold)
-                
-                if len(peaks) == 0:
-                    continue
-                
-                # Peak-to-peak validation
-                peak_to_peak = np.max(sigma_segment) - np.min(sigma_segment)
-                if peak_to_peak > self.thresholds['amplitude_max']:
-                    continue
-                
-                # RMS standard check
-                rms_standard = np.sqrt(np.mean(segment ** 2))
-                if rms_standard > self.thresholds['rms_standard_max']:
-                    continue
-                
-                confidence = self._compute_confidence(segment)
-                candidates.append({
-                    'start': start_idx,
-                    'end': end_idx,
-                    'confidence': confidence
-                })
-        
-        return candidates
+            if duration < self.thresholds['duration_min'] or duration > self.thresholds['duration_max']:
+                continue
+
+            segment = sigma_signal[start_idx:end_idx]
+            raw_segment = signal_data[start_idx:end_idx]
+            sigma_power = np.mean(segment ** 2)
+            broad_power = np.mean(broadband_signal[start_idx:end_idx] ** 2)
+
+            if sigma_power / (broad_power + 1e-10) < 0.1:
+                continue
+
+            rms_sigma = np.sqrt(np.mean(segment ** 2))
+            if rms_sigma < self.thresholds['rms_spindle']:
+                continue
+
+            peak_to_peak = np.max(segment) - np.min(segment)
+            if peak_to_peak > self.thresholds['amplitude_max']:
+                continue
+
+            peaks, _ = find_peaks(segment, height=0.2 * np.max(np.abs(segment)), distance=int(self.fs / self.thresholds['frequency_max']))
+            if len(peaks) < int(self.thresholds['frequency_min'] * duration / 2):
+                continue
+
+            rms_standard = np.sqrt(np.mean(raw_segment ** 2))
+            if rms_standard > self.thresholds['rms_standard_max']:
+                continue
+
+            artifact_score = self.sp.detect_artifacts(raw_segment)
+            if artifact_score > self.thresholds['artifact']:
+                continue
+
+            events.append({
+                'start': start_idx / self.fs,
+                'end': end_idx / self.fs,
+                'duration': duration,
+                'confidence': self._compute_confidence(segment)
+            })
+
+        return self._consolidate_events(events)
+    
+    def _compute_confidence(self, segment):
+        """Compute spindle confidence score"""
+        peaks, _ = find_peaks(segment, height=0.2 * np.max(np.abs(segment)), distance=int(self.fs / self.thresholds['frequency_max']))
+        if len(peaks) == 0:
+            return 0.0
+
+        intervals = np.diff(peaks) / self.fs
+        if len(intervals) == 0:
+            return 0.0
+
+        mean_interval = np.mean(intervals)
+        std_interval = np.std(intervals)
+        regularity = 1 - (std_interval / (mean_interval + 1e-10))
+        regularity = max(0.0, min(1.0, regularity))
+
+        envelope, _ = self.sp.hilbert_envelope(segment)
+        envelope_ratio = np.max(envelope) / (np.mean(envelope) + 1e-10)
+        amplitude_score = max(0.0, min(1.0, 1 - (envelope_ratio - 1) / 4))
+
+        return 0.5 * regularity + 0.5 * amplitude_score
     
     def _compute_confidence(self, segment):
         """Compute spindle confidence score"""
