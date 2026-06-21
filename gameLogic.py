@@ -62,12 +62,8 @@ def nearbyEnemy(state, currentTick):
 def recentlyHurt(state, currentTick):
     global previousHealth, lastTickHurtCalled, previousAction
     health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
-    if(health < previousHealth):
-        previousHealth = health
-        if(currentTick - lastTickHurtCalled < ticksFor5Seconds):
-            lastTickHurtCalled = currentTick
-            return True
-        lastTickHurtCalled = currentTick
+    if(currentTick - lastTickHurtCalled < ticksFor5Seconds):
+        return True
     return False
 
 def healthNearby(state, currentTick):
@@ -314,7 +310,7 @@ class DirectlyFlee(RealActions):
             self.deactivateAction()
             return previousAction, -10
         
-        if(abs(posX - xBounds[0]) < 50 or abs(posX - xBounds[1]) < 50 or abs(posY - yBounds[0]) or abs(posY - xBounds[1]) < 50):
+        if(abs(posX - xBounds[0]) < 50 or abs(posX - xBounds[1]) < 50 or abs(posY - yBounds[0]) < 50 or abs(posY - yBounds[1]) < 50):
             self.deactivateAction()
             return previousAction, 0
         
