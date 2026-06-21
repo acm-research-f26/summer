@@ -4,3 +4,12 @@ results/
 chemberta/
 rnafm/
 structures/*.pdb
+structures/
+hariboss/
+papers/
+tools/
+__pycache__/
+*.pyc
+*.pdb
+*.pdf
+*.sif
