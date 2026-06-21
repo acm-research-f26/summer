@@ -15,13 +15,20 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset, Subset
 
-from logging_config import log_epoch_metrics, setup_logging
-from model_def import DataCenterVisionNet
+try:
+    from config import Config, load_config
+    from logging_config import log_epoch_metrics, setup_logging
+    from model_def import DataCenterVisionNet
+except ImportError:
+    from src.config import Config, load_config
+    from src.logging_config import log_epoch_metrics, setup_logging
+    from src.model_def import DataCenterVisionNet
 
 logger = setup_logging()
 
-DEFAULT_GCS_FUSE_TRAINING = "/gcs/datacenter-summer-poc-data"
-NUM_CLASSES = 3
+
+def _cfg(config: Config | None) -> Config:
+    return config or load_config()
 
 
 class VisionImageDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
@@ -45,25 +52,42 @@ class VisionImageDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         )
 
 
-def compute_class_weights(manifest: pd.DataFrame, num_classes: int = 3) -> torch.Tensor:
+def compute_class_weights(
+    manifest: pd.DataFrame,
+    num_classes: int | None = None,
+    config: Config | None = None,
+) -> torch.Tensor:
     """Compute inverse-frequency class weights normalized to num_classes."""
+    cfg = _cfg(config)
+    if num_classes is not None:
+        resolved_num_classes = num_classes
+    else:
+        resolved_num_classes = cfg.model.num_classes
     counts = (
         manifest["target_label"]
         .value_counts()
-        .reindex(range(num_classes), fill_value=1)
+        .reindex(range(resolved_num_classes), fill_value=1)
     )
     weights = 1.0 / counts.astype(float)
-    normalized = weights / weights.sum() * num_classes
+    normalized = weights / weights.sum() * resolved_num_classes
     return torch.tensor(normalized.values, dtype=torch.float32)
 
 
 def stratified_train_val_indices(
     manifest: pd.DataFrame,
-    val_fraction: float = 0.2,
-    random_state: int = 42,
+    val_fraction: float | None = None,
+    random_state: int | None = None,
+    config: Config | None = None,
 ) -> tuple[list[int], list[int]]:
     """Split manifest indices into stratified train and validation sets."""
-    rng = np.random.default_rng(random_state)
+    cfg = _cfg(config)
+    resolved_val_fraction = (
+        val_fraction if val_fraction is not None else cfg.training.val_fraction
+    )
+    resolved_random_state = (
+        random_state if random_state is not None else cfg.training.random_state
+    )
+    rng = np.random.default_rng(resolved_random_state)
     train_indices: list[int] = []
     val_indices: list[int] = []
 
@@ -71,7 +95,7 @@ def stratified_train_val_indices(
         label_rows = manifest[manifest["target_label"] == label]
         indices = label_rows.index.to_numpy(copy=True)
         rng.shuffle(indices)
-        n_val = int(len(indices) * val_fraction)
+        n_val = int(len(indices) * resolved_val_fraction)
         n_val = max(1, n_val) if len(indices) > 1 else 0
         val_indices.extend(indices[:n_val].tolist())
         train_indices.extend(indices[n_val:].tolist())
@@ -123,7 +147,8 @@ def _save_confusion_matrix(
     y_true: np.ndarray,
     y_pred: np.ndarray,
     output_path: Path,
-    num_classes: int = NUM_CLASSES,
+    num_classes: int,
+    plot_dpi: int,
 ) -> None:
     matrix = np.zeros((num_classes, num_classes), dtype=int)
     for true_label, pred_label in zip(y_true, y_pred, strict=True):
@@ -143,11 +168,15 @@ def _save_confusion_matrix(
             )
     fig.colorbar(im, ax=ax)
     fig.tight_layout()
-    fig.savefig(output_path, dpi=150)
+    fig.savefig(output_path, dpi=plot_dpi)
     plt.close(fig)
 
 
-def _save_loss_curve(history: list[dict[str, float]], output_path: Path) -> None:
+def _save_loss_curve(
+    history: list[dict[str, float]],
+    output_path: Path,
+    plot_dpi: int,
+) -> None:
     epochs = [row["epoch"] for row in history]
     train_losses = [row["train_loss"] for row in history]
     val_losses = [row["val_loss"] for row in history]
@@ -160,7 +189,7 @@ def _save_loss_curve(history: list[dict[str, float]], output_path: Path) -> None
     ax.set_title("Training and Validation Loss")
     ax.legend()
     fig.tight_layout()
-    fig.savefig(output_path, dpi=150)
+    fig.savefig(output_path, dpi=plot_dpi)
     plt.close(fig)
 
 
@@ -171,6 +200,7 @@ def _save_training_artifacts(
     hyperparams: dict[str, float | int],
     y_true: np.ndarray,
     y_pred: np.ndarray,
+    config: Config,
 ) -> None:
     class_distribution = manifest["target_label"].value_counts().sort_index().to_dict()
     metrics = {
@@ -183,9 +213,16 @@ def _save_training_artifacts(
     metrics_path = model_dir / "metrics.json"
     metrics_path.write_text(json.dumps(metrics, indent=2))
 
+    plot_dpi = config.training.plot_dpi
     pd.DataFrame(history).to_csv(model_dir / "metrics.csv", index=False)
-    _save_loss_curve(history, model_dir / "loss_curve.png")
-    _save_confusion_matrix(y_true, y_pred, model_dir / "confusion_matrix.png")
+    _save_loss_curve(history, model_dir / "loss_curve.png", plot_dpi)
+    _save_confusion_matrix(
+        y_true,
+        y_pred,
+        model_dir / "confusion_matrix.png",
+        num_classes=config.model.num_classes,
+        plot_dpi=plot_dpi,
+    )
 
     logger.info("Artifacts saved to %s", model_dir)
 
@@ -193,15 +230,29 @@ def _save_training_artifacts(
 def train(
     training_dir: str | Path,
     model_dir: str | Path,
-    epochs: int,
-    batch_size: int,
-    learning_rate: float = 0.001,
-    val_fraction: float = 0.2,
+    epochs: int | None = None,
+    batch_size: int | None = None,
+    learning_rate: float | None = None,
+    val_fraction: float | None = None,
+    config: Config | None = None,
 ) -> None:
     """Run the Vertex AI training loop and persist model weights plus eval artifacts."""
+    cfg = _cfg(config)
+    train_cfg = cfg.training
+    gcs_cfg = cfg.gcs
+
+    resolved_epochs = epochs if epochs is not None else train_cfg.epochs
+    resolved_batch_size = batch_size if batch_size is not None else train_cfg.batch_size
+    resolved_learning_rate = (
+        learning_rate if learning_rate is not None else train_cfg.learning_rate
+    )
+    resolved_val_fraction = (
+        val_fraction if val_fraction is not None else train_cfg.val_fraction
+    )
+
     training_path = Path(training_dir)
-    csv_path = training_path / "parsed_manifest.csv"
-    image_path = training_path / "image_tiles"
+    csv_path = training_path / gcs_cfg.manifest_blob
+    image_path = training_path / gcs_cfg.prefixes.image_tiles
 
     manifest = pd.read_csv(csv_path)
     class_counts = manifest["target_label"].value_counts().sort_index()
@@ -210,23 +261,24 @@ def train(
     full_dataset = VisionImageDataset(csv_path, image_path)
     train_idx, val_idx = stratified_train_val_indices(
         manifest,
-        val_fraction=val_fraction,
+        val_fraction=resolved_val_fraction,
+        config=cfg,
     )
     train_loader = DataLoader(
         Subset(full_dataset, train_idx),
-        batch_size=batch_size,
+        batch_size=resolved_batch_size,
         shuffle=True,
     )
     val_loader = DataLoader(
         Subset(full_dataset, val_idx),
-        batch_size=batch_size,
+        batch_size=resolved_batch_size,
         shuffle=False,
     )
 
-    model = DataCenterVisionNet(num_classes=NUM_CLASSES)
-    class_weights = compute_class_weights(manifest)
+    model = DataCenterVisionNet(config=cfg)
+    class_weights = compute_class_weights(manifest, config=cfg)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=resolved_learning_rate)
 
     history: list[dict[str, float]] = []
     logger.info(
@@ -234,7 +286,7 @@ def train(
         len(train_idx),
         len(val_idx),
     )
-    for epoch in range(epochs):
+    for epoch in range(resolved_epochs):
         try:
             train_loss = _run_epoch(model, train_loader, criterion, optimizer)
             val_loss = _run_epoch(model, val_loader, criterion, optimizer=None)
@@ -250,7 +302,7 @@ def train(
             log_epoch_metrics(
                 logger,
                 epoch=epoch + 1,
-                total_epochs=epochs,
+                total_epochs=resolved_epochs,
                 train_loss=train_loss,
                 val_loss=val_loss,
                 learning_rate=current_lr,
@@ -270,41 +322,53 @@ def train(
         history,
         manifest,
         hyperparams={
-            "epochs": epochs,
-            "batch_size": batch_size,
-            "learning_rate": learning_rate,
-            "val_fraction": val_fraction,
+            "epochs": resolved_epochs,
+            "batch_size": resolved_batch_size,
+            "learning_rate": resolved_learning_rate,
+            "val_fraction": resolved_val_fraction,
         },
         y_true=y_true,
         y_pred=y_pred,
+        config=cfg,
     )
 
 
-def resolve_training_dir(training_arg: str) -> Path:
+def resolve_training_dir(training_arg: str, config: Config | None = None) -> Path:
     """Resolve training directory from CLI arg, GCS fuse mount, or local fallback."""
+    cfg = _cfg(config)
     candidate = Path(training_arg)
     if candidate.exists():
         return candidate
-    fuse_path = Path(DEFAULT_GCS_FUSE_TRAINING)
+    fuse_path = Path(cfg.gcs.fuse_root)
     if fuse_path.exists():
         return fuse_path
     return candidate
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+def parse_args(
+    argv: list[str] | None = None,
+    config: Config | None = None,
+) -> argparse.Namespace:
     """Parse CLI arguments for Vertex AI or local dry-run execution."""
+    cfg = _cfg(config)
+    vertex_cfg = cfg.vertex_ai
+    train_cfg = cfg.training
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=5)
-    parser.add_argument("--batch-size", type=int, default=4)
+    parser.add_argument("--epochs", type=int, default=train_cfg.epochs)
+    parser.add_argument("--batch-size", type=int, default=train_cfg.batch_size)
     parser.add_argument(
         "--training",
         type=str,
-        default=os.environ.get("AIP_TRAINING_DATA_URI", "data"),
+        default=os.environ.get(
+            "AIP_TRAINING_DATA_URI",
+            vertex_cfg.default_training_dir,
+        ),
     )
     parser.add_argument(
         "--model-dir",
         type=str,
-        default=os.environ.get("AIP_MODEL_DIR", "/tmp/model"),
+        default=os.environ.get("AIP_MODEL_DIR", vertex_cfg.default_model_dir),
     )
     return parser.parse_args(argv)
 

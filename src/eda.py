@@ -11,36 +11,27 @@ import pandas as pd
 from matplotlib.figure import Figure
 
 try:
-    from gcs import (
-        GCS_BUCKET,
-        blob_exists,
-        download_blob,
-        raw_blob_name,
-        tile_blob_name,
-    )
+    from config import Config, load_config
+    from gcs import blob_exists, download_blob, raw_blob_name, tile_blob_name
 except ImportError:
-    from src.gcs import (
-        GCS_BUCKET,
-        blob_exists,
-        download_blob,
-        raw_blob_name,
-        tile_blob_name,
-    )
+    from src.config import Config, load_config
+    from src.gcs import blob_exists, download_blob, raw_blob_name, tile_blob_name
 
-IMPACT_TIER_LABELS = {
-    0: "Low (Enterprise/Edge)",
-    1: "Medium (Colocation)",
-    2: "Large (Hyperscale)",
-}
+
+def _cfg(config: Config | None) -> Config:
+    return config or load_config()
 
 
 def load_building_context(
     manifest_path: str | Path,
-    buildings_path: str | Path = "data/buildings.csv",
+    buildings_path: str | Path | None = None,
+    config: Config | None = None,
 ) -> pd.DataFrame:
     """Merge manifest coordinates and labels with building names for EDA."""
+    cfg = _cfg(config)
+    source_buildings = buildings_path or cfg.preprocessing.paths.buildings_csv
     manifest = pd.read_csv(manifest_path)
-    buildings = pd.read_csv(buildings_path)[
+    buildings = pd.read_csv(source_buildings)[
         ["OBJECTID", "BuildingName", "BuildingStatus", "GFA", "BPGFA"]
     ]
     return manifest.merge(buildings, on="OBJECTID", how="left")
@@ -48,13 +39,15 @@ def load_building_context(
 
 def verify_tile_alignment(
     manifest_path: str | Path,
-    tile_dir: str | Path = "data/image_tiles",
-    raw_dir: str | Path = "data/raw_satellite",
+    tile_dir: str | Path | None = None,
+    raw_dir: str | Path | None = None,
+    config: Config | None = None,
 ) -> pd.DataFrame:
     """Report missing or mismatched tiles and raw previews for each OBJECTID."""
+    cfg = _cfg(config)
     manifest = pd.read_csv(manifest_path)
-    tile_path = Path(tile_dir)
-    raw_path = Path(raw_dir)
+    tile_path = Path(tile_dir or cfg.paths.local_tiles_dir)
+    raw_path = Path(raw_dir or cfg.paths.local_raw_dir)
 
     records: list[dict[str, object]] = []
     for _, row in manifest.iterrows():
@@ -86,22 +79,30 @@ def verify_tile_alignment(
 
 def verify_tile_alignment_gcs(
     manifest_path: str | Path,
-    bucket: str = GCS_BUCKET,
+    bucket: str | None = None,
     project_id: str | None = None,
+    config: Config | None = None,
 ) -> pd.DataFrame:
     """Report missing GCS tiles and raw previews for each OBJECTID."""
+    cfg = _cfg(config)
     manifest = pd.read_csv(manifest_path)
     records: list[dict[str, object]] = []
 
     for _, row in manifest.iterrows():
         obj_id = int(row["OBJECTID"])
-        npy_blob = tile_blob_name(obj_id)
-        rgb_blob = raw_blob_name(obj_id, "rgb")
-        has_npy = blob_exists(npy_blob, bucket=bucket, project_id=project_id)
-        has_raw_rgb = blob_exists(rgb_blob, bucket=bucket, project_id=project_id)
+        npy_blob = tile_blob_name(obj_id, config=cfg)
+        rgb_blob = raw_blob_name(obj_id, "rgb", config=cfg)
+        has_npy = blob_exists(
+            npy_blob, bucket=bucket, project_id=project_id, config=cfg
+        )
+        has_raw_rgb = blob_exists(
+            rgb_blob, bucket=bucket, project_id=project_id, config=cfg
+        )
         npy_shape = None
         if has_npy:
-            blob_data = download_blob(npy_blob, bucket=bucket, project_id=project_id)
+            blob_data = download_blob(
+                npy_blob, bucket=bucket, project_id=project_id, config=cfg
+            )
             tensor = np.load(io.BytesIO(blob_data))
             npy_shape = tuple(tensor.shape)
 
@@ -126,25 +127,32 @@ def verify_tile_alignment_gcs(
     return report
 
 
-def plot_tabular_eda(manifest_df: pd.DataFrame) -> Figure:
+def plot_tabular_eda(
+    manifest_df: pd.DataFrame,
+    config: Config | None = None,
+) -> Figure:
     """Plot label distribution, MaxGFA by tier, and geographic coverage."""
+    cfg = _cfg(config)
+    eda_cfg = cfg.eda
+    tier_labels = eda_cfg.impact_tier_labels
+    tier_colors = list(eda_cfg.tier_colors)
+
     fig, axes = plt.subplots(1, 3, figsize=(16, 4))
 
     label_counts = manifest_df["target_label"].value_counts().sort_index()
-    tier_names = [IMPACT_TIER_LABELS[int(label)] for label in label_counts.index]
-    tier_colors = ["#4C78A8", "#F58518", "#E45756"]
+    tier_names = [tier_labels[int(label)] for label in label_counts.index]
     axes[0].bar(tier_names, label_counts.values, color=tier_colors)
     axes[0].set_title("Impact Tier Distribution")
     axes[0].set_ylabel("Building Count")
     axes[0].tick_params(axis="x", rotation=20)
 
-    for label, color in zip([0, 1, 2], ["#4C78A8", "#F58518", "#E45756"], strict=True):
+    for label, color in zip([0, 1, 2], tier_colors, strict=True):
         subset = manifest_df[manifest_df["target_label"] == label]
         axes[1].hist(
             subset["MaxGFA"],
             bins=20,
             alpha=0.6,
-            label=IMPACT_TIER_LABELS[label],
+            label=tier_labels[label],
             color=color,
         )
     axes[1].set_title("MaxGFA by Impact Tier")
@@ -172,9 +180,9 @@ def plot_tabular_eda(manifest_df: pd.DataFrame) -> Figure:
 def _approx_tile_bounds(
     latitude: float,
     longitude: float,
-    half_extent_m: float = 640.0,
+    half_extent_m: float,
 ):
-    """Approximate 1280 m tile footprint bounds in decimal degrees."""
+    """Approximate tile footprint bounds in decimal degrees."""
     lat_offset = half_extent_m / 111_320.0
     lon_offset = half_extent_m / (111_320.0 * np.cos(np.radians(latitude)))
     return (
@@ -188,11 +196,22 @@ def _approx_tile_bounds(
 def plot_geographic_tile_footprints(
     context_df: pd.DataFrame,
     sample_object_ids: list[int] | None = None,
-    n_samples: int = 6,
+    n_samples: int | None = None,
+    config: Config | None = None,
 ) -> Figure:
     """Plot building coordinates and highlight sample tile footprints."""
+    cfg = _cfg(config)
+    resolved_n_samples = (
+        n_samples if n_samples is not None else cfg.eda.geographic_sample_count
+    )
     if sample_object_ids is None:
-        sample_object_ids = context_df["OBJECTID"].head(n_samples).astype(int).tolist()
+        sample_object_ids = (
+            context_df["OBJECTID"].head(resolved_n_samples).astype(int).tolist()
+        )
+
+    half_extent_m = cfg.tile_half_extent_m
+    footprint_m = cfg.tile_footprint_m
+    footprint_km = footprint_m / 1000
 
     fig, ax = plt.subplots(figsize=(8, 8))
     ax.scatter(
@@ -207,7 +226,9 @@ def plot_geographic_tile_footprints(
 
     samples = context_df[context_df["OBJECTID"].isin(sample_object_ids)]
     for _, row in samples.iterrows():
-        bounds = _approx_tile_bounds(float(row["latitude"]), float(row["longitude"]))
+        bounds = _approx_tile_bounds(
+            float(row["latitude"]), float(row["longitude"]), half_extent_m
+        )
         rect = plt.Rectangle(
             (bounds[0], bounds[1]),
             bounds[2] - bounds[0],
@@ -234,7 +255,8 @@ def plot_geographic_tile_footprints(
             color="black",
         )
 
-    ax.set_title("Sample Tile Footprints (~1.28 km) Over Building Coordinates")
+    title = f"Sample Tile Footprints (~{footprint_km:.2f} km) Over Building Coordinates"
+    ax.set_title(title)
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
     fig.tight_layout()
@@ -243,17 +265,24 @@ def plot_geographic_tile_footprints(
 
 def plot_satellite_samples(
     context_df: pd.DataFrame,
-    raw_dir: str | Path = "data/raw_satellite",
-    tile_dir: str | Path = "data/image_tiles",
+    raw_dir: str | Path | None = None,
+    tile_dir: str | Path | None = None,
     sample_object_ids: list[int] | None = None,
-    n_samples: int = 4,
+    n_samples: int | None = None,
+    config: Config | None = None,
 ) -> Figure:
     """Visualize raw RGB previews alongside processed tensor band composites."""
+    cfg = _cfg(config)
+    resolved_n_samples = (
+        n_samples if n_samples is not None else cfg.eda.satellite_sample_count
+    )
     if sample_object_ids is None:
-        sample_object_ids = context_df["OBJECTID"].head(n_samples).astype(int).tolist()
+        sample_object_ids = (
+            context_df["OBJECTID"].head(resolved_n_samples).astype(int).tolist()
+        )
 
-    raw_path = Path(raw_dir)
-    tile_path = Path(tile_dir)
+    raw_path = Path(raw_dir or cfg.paths.local_raw_dir)
+    tile_path = Path(tile_dir or cfg.paths.local_tiles_dir)
     n = len(sample_object_ids)
     fig, axes = plt.subplots(n, 4, figsize=(14, 3.5 * n))
     if n == 1:
@@ -301,13 +330,20 @@ def plot_satellite_samples(
 def plot_satellite_samples_gcs(
     context_df: pd.DataFrame,
     sample_object_ids: list[int] | None = None,
-    n_samples: int = 4,
-    bucket: str = GCS_BUCKET,
+    n_samples: int | None = None,
+    bucket: str | None = None,
     project_id: str | None = None,
+    config: Config | None = None,
 ) -> Figure:
     """Visualize GCS-hosted tiles for sample OBJECTIDs."""
+    cfg = _cfg(config)
+    resolved_n_samples = (
+        n_samples if n_samples is not None else cfg.eda.satellite_sample_count
+    )
     if sample_object_ids is None:
-        sample_object_ids = context_df["OBJECTID"].head(n_samples).astype(int).tolist()
+        sample_object_ids = (
+            context_df["OBJECTID"].head(resolved_n_samples).astype(int).tolist()
+        )
 
     n = len(sample_object_ids)
     fig, axes = plt.subplots(n, 4, figsize=(14, 3.5 * n))
@@ -318,10 +354,16 @@ def plot_satellite_samples_gcs(
     for row_idx, obj_id in enumerate(sample_object_ids):
         row = context_df[context_df["OBJECTID"] == obj_id].iloc[0]
         rgb_bytes = download_blob(
-            raw_blob_name(obj_id, "rgb"), bucket=bucket, project_id=project_id
+            raw_blob_name(obj_id, "rgb", config=cfg),
+            bucket=bucket,
+            project_id=project_id,
+            config=cfg,
         )
         tile_bytes = download_blob(
-            tile_blob_name(obj_id), bucket=bucket, project_id=project_id
+            tile_blob_name(obj_id, config=cfg),
+            bucket=bucket,
+            project_id=project_id,
+            config=cfg,
         )
         tensor = np.load(io.BytesIO(tile_bytes))
         rgb_preview = plt.imread(io.BytesIO(rgb_bytes), format="png")

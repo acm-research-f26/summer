@@ -9,31 +9,35 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 try:
-    from gcs import (
-        GCS_BUCKET,
-        download_artifact_prefix,
-        get_latest_run_prefix,
-    )
+    from config import Config, load_config
+    from gcs import download_artifact_prefix, get_latest_run_prefix
 except ImportError:
-    from src.gcs import (
-        GCS_BUCKET,
-        download_artifact_prefix,
-        get_latest_run_prefix,
-    )
+    from src.config import Config, load_config
+    from src.gcs import download_artifact_prefix, get_latest_run_prefix
 
 
 def load_run_artifacts(
     run_prefix: str | None = None,
-    local_dir: str | Path = "artifacts",
-    bucket: str = GCS_BUCKET,
+    local_dir: str | Path | None = None,
+    bucket: str | None = None,
     project_id: str | None = None,
+    config: Config | None = None,
 ) -> Path:
     """Download a training run's artifacts from GCS to a local directory."""
-    prefix = run_prefix or get_latest_run_prefix(bucket=bucket, project_id=project_id)
+    cfg = config or load_config()
+    resolved_local_dir = local_dir or cfg.paths.artifacts_dir
+    prefix = run_prefix or get_latest_run_prefix(
+        bucket=bucket, project_id=project_id, config=cfg
+    )
     if prefix is None:
-        raise FileNotFoundError("No training runs found under output/models/")
+        output_prefix = cfg.gcs.prefixes.output_models
+        raise FileNotFoundError(f"No training runs found under {output_prefix}/")
     return download_artifact_prefix(
-        prefix, local_dir, bucket=bucket, project_id=project_id
+        prefix,
+        resolved_local_dir,
+        bucket=bucket,
+        project_id=project_id,
+        config=cfg,
     )
 
 

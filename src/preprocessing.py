@@ -8,43 +8,49 @@ import numpy as np
 import pandas as pd
 import pyproj
 
-GFA_COLUMNS = ["GFA", "BPGFA", "ApprovedGFA", "REATaxedGFA"]
-MANIFEST_COLUMNS = ["OBJECTID", "latitude", "longitude", "target_label", "MaxGFA"]
-TIER_LOW = 0
-TIER_MEDIUM = 1
-TIER_LARGE = 2
-MW_LOW_BOUND = 20.0
-MW_MEDIUM_UPPER = 90.0
+try:
+    from config import Config, load_config
+except ImportError:
+    from src.config import Config, load_config
 
 
 def run_tabular_preprocessing(
-    csv_path: str | Path,
-    output_path: str | Path = "data/parsed_manifest.csv",
+    csv_path: str | Path | None = None,
+    output_path: str | Path | None = None,
+    config: Config | None = None,
 ) -> pd.DataFrame:
     """Ingest buildings CSV, compute labels, transform coords, save manifest."""
-    df = pd.read_csv(csv_path)
+    cfg = config or load_config()
+    prep = cfg.preprocessing
 
-    df["MaxGFA"] = df[GFA_COLUMNS].max(axis=1)
+    source_csv = csv_path or prep.paths.buildings_csv
+    manifest_output = output_path or prep.paths.manifest_output
+
+    df = pd.read_csv(source_csv)
+
+    df["MaxGFA"] = df[list(prep.gfa_columns)].max(axis=1)
     df = df[df["MaxGFA"] > 0].copy()
 
-    df["Est_MW"] = (df["MaxGFA"] * 150) / 1_000_000
+    df["Est_MW"] = (df["MaxGFA"] * prep.mw.gfa_multiplier) / prep.mw.divisor
     conditions = [
-        df["Est_MW"] < MW_LOW_BOUND,
-        (df["Est_MW"] >= MW_LOW_BOUND) & (df["Est_MW"] <= MW_MEDIUM_UPPER),
+        df["Est_MW"] < prep.mw.low_bound,
+        (df["Est_MW"] >= prep.mw.low_bound) & (df["Est_MW"] <= prep.mw.medium_upper),
     ]
     df["target_label"] = np.select(
         conditions,
-        [TIER_LOW, TIER_MEDIUM],
-        default=TIER_LARGE,
+        [prep.tier.low, prep.tier.medium],
+        default=prep.tier.large,
     ).astype(int)
 
-    transformer = pyproj.Transformer.from_crs("EPSG:2283", "EPSG:4326", always_xy=True)
+    transformer = pyproj.Transformer.from_crs(
+        prep.crs.source, prep.crs.target, always_xy=True
+    )
     longitude, latitude = transformer.transform(df["X"].values, df["Y"].values)
     df["latitude"] = latitude
     df["longitude"] = longitude
 
-    clean_df = df[MANIFEST_COLUMNS].copy()
-    output = Path(output_path)
+    clean_df = df[list(prep.manifest_columns)].copy()
+    output = Path(manifest_output)
     output.parent.mkdir(parents=True, exist_ok=True)
     clean_df.to_csv(output, index=False)
     print(f"Tabular preprocessing complete. Manifest saved to {output}")

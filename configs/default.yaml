@@ -1,0 +1,142 @@
+# Default configuration for the data center vision-stream impact classifier.
+# Override at runtime via SUMMER_CONFIG_PATH or load_config(path=...).
+
+# ---------------------------------------------------------------------------
+# Google Cloud Platform
+# ---------------------------------------------------------------------------
+gcp:
+  project_id: datacenter-summer-poc
+  region: us-central1
+
+# ---------------------------------------------------------------------------
+# Google Cloud Storage layout (bucket root)
+# ---------------------------------------------------------------------------
+gcs:
+  bucket_name: datacenter-summer-poc-data
+  # Vertex AI / training jobs mount buckets at /gcs/{bucket_name}
+  fuse_root: /gcs/datacenter-summer-poc-data
+  manifest_blob: parsed_manifest.csv
+  prefixes:
+    image_tiles: image_tiles
+    raw_satellite: raw_satellite
+    output_models: output/models
+
+# ---------------------------------------------------------------------------
+# Earth Engine / Sentinel-2 extraction
+# ---------------------------------------------------------------------------
+earth_engine:
+  s2_collection: COPERNICUS/S2_SR_HARMONIZED
+  band_names: ["B4", "B3", "B2", "B8", "B11"]
+  start_date: "2018-01-01"
+  end_date: "2026-01-01"
+  max_cloud_cover: 5
+  scale_m: 10
+  reflectance_scale: 10000.0
+  source_id: gee_sentinel2_l2a
+  mock_source_id: mock_sentinel2_poc
+  progress_log_every: 10
+
+# ---------------------------------------------------------------------------
+# Dataset / imagery tensors
+# ---------------------------------------------------------------------------
+dataset:
+  tile_shape: [5, 128, 128]  # channels, height, width
+  band_names: ["red", "green", "blue", "nir", "swir"]
+  tile_px: 128
+
+# ---------------------------------------------------------------------------
+# Tabular preprocessing & label tiers
+# ---------------------------------------------------------------------------
+preprocessing:
+  gfa_columns: ["GFA", "BPGFA", "ApprovedGFA", "REATaxedGFA"]
+  manifest_columns: ["OBJECTID", "latitude", "longitude", "target_label", "MaxGFA"]
+  tier:
+    low: 0
+    medium: 1
+    large: 2
+  mw:
+    low_bound: 20.0
+    medium_upper: 90.0
+    gfa_multiplier: 150
+    divisor: 1000000
+  crs:
+    source: "EPSG:2283"
+    target: "EPSG:4326"
+  paths:
+    buildings_csv: data/buildings.csv
+    manifest_output: data/parsed_manifest.csv
+
+# ---------------------------------------------------------------------------
+# Model architecture
+# ---------------------------------------------------------------------------
+model:
+  num_classes: 3
+  backbone: resnet34
+  in_channels: 5
+
+# ---------------------------------------------------------------------------
+# Training hyperparameters (local dry-run & Vertex CLI defaults)
+# ---------------------------------------------------------------------------
+training:
+  epochs: 5
+  batch_size: 4
+  learning_rate: 0.001
+  val_fraction: 0.2
+  random_state: 42
+  plot_dpi: 150
+
+# ---------------------------------------------------------------------------
+# Vertex AI custom training job
+# ---------------------------------------------------------------------------
+vertex_ai:
+  container_uri: us-docker.pkg.dev/vertex-ai/training/pytorch-gpu.2-0.py310:latest
+  machine_type: n1-standard-4
+  accelerator_type: NVIDIA_TESLA_T4
+  accelerator_count: 1
+  replica_count: 1
+  display_name_prefix: datacenter-vision
+  requirements: ["torch", "torchvision", "pandas", "numpy", "matplotlib"]
+  default_training_dir: data
+  default_model_dir: /tmp/model
+  # Pipeline notebook overrides for production runs
+  pipeline:
+    epochs: 10
+    batch_size: 8
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+logging:
+  logger_name: acm_research
+  log_path: logs/training_run.log
+  level: INFO
+  date_format: "%Y-%m-%d %H:%M:%S"
+  message_format: "[%(asctime)s] [%(levelname)s] %(message)s"
+
+# ---------------------------------------------------------------------------
+# Local & pipeline paths
+# ---------------------------------------------------------------------------
+paths:
+  local_data_dir: data
+  local_tiles_dir: data/image_tiles
+  local_raw_dir: data/raw_satellite
+  artifacts_dir: artifacts
+
+# ---------------------------------------------------------------------------
+# Pipeline notebook defaults
+# ---------------------------------------------------------------------------
+pipeline:
+  use_mock: false
+  dev_limit: 5  # set to null for full extraction (~202 tiles)
+
+# ---------------------------------------------------------------------------
+# EDA visualization
+# ---------------------------------------------------------------------------
+eda:
+  impact_tier_labels:
+    0: "Low (Enterprise/Edge)"
+    1: "Medium (Colocation)"
+    2: "Large (Hyperscale)"
+  tier_colors: ["#4C78A8", "#F58518", "#E45756"]
+  geographic_sample_count: 6
+  satellite_sample_count: 4

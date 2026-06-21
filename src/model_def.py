@@ -6,17 +6,36 @@ import torch
 import torch.nn as nn
 from torchvision import models
 
+try:
+    from config import Config, load_config
+except ImportError:
+    from src.config import Config, load_config
+
 
 class DataCenterVisionNet(nn.Module):
     """ResNet-34 backbone with 5-channel input and 3-class impact head."""
 
-    def __init__(self, num_classes: int = 3) -> None:
+    def __init__(
+        self,
+        num_classes: int | None = None,
+        in_channels: int | None = None,
+        config: Config | None = None,
+    ) -> None:
         super().__init__()
+        cfg = config or load_config()
+        if num_classes is not None:
+            resolved_num_classes = num_classes
+        else:
+            resolved_num_classes = cfg.model.num_classes
+        resolved_in_channels = (
+            in_channels if in_channels is not None else cfg.model.in_channels
+        )
+
         self.backbone = models.resnet34(weights=models.ResNet34_Weights.DEFAULT)
 
         old_conv = self.backbone.conv1
         new_conv = nn.Conv2d(
-            in_channels=5,
+            in_channels=resolved_in_channels,
             out_channels=old_conv.out_channels,
             kernel_size=old_conv.kernel_size,
             stride=old_conv.stride,
@@ -34,7 +53,7 @@ class DataCenterVisionNet(nn.Module):
         self.backbone.conv1 = new_conv
 
         in_features = self.backbone.fc.in_features
-        self.backbone.fc = nn.Linear(in_features, num_classes)
+        self.backbone.fc = nn.Linear(in_features, resolved_num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.backbone(x)

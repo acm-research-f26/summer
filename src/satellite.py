@@ -12,8 +12,10 @@ import numpy as np
 import pandas as pd
 
 try:
+    from config import Config, load_config
     from gcs import upload_json, upload_npy, upload_png
 except ImportError:
+    from src.config import Config, load_config
     from src.gcs import upload_json, upload_npy, upload_png
 
 if TYPE_CHECKING:
@@ -26,24 +28,16 @@ else:
 
 logger = logging.getLogger(__name__)
 
-TILE_SHAPE = (5, 128, 128)
-BAND_NAMES = ("red", "green", "blue", "nir", "swir")
 
-S2_COLLECTION = "COPERNICUS/S2_SR_HARMONIZED"
-BAND_NAMES_EE = ["B4", "B3", "B2", "B8", "B11"]
-SCALE_M = 10
-TILE_PX = 128
-HALF_EXTENT_M = (TILE_PX * SCALE_M) / 2
-REFLECTANCE_SCALE = 10_000.0
-DEFAULT_START_DATE = "2018-01-01"
-DEFAULT_END_DATE = "2026-01-01"
-MAX_CLOUD_COVER = 5
+def _cfg(config: Config | None) -> Config:
+    return config or load_config()
 
 
-def _generate_mock_tensor(object_id: int) -> np.ndarray:
+def _generate_mock_tensor(object_id: int, config: Config) -> np.ndarray:
     """Create a reproducible mock 5-channel tile for a building OBJECTID."""
     rng = np.random.default_rng(object_id)
-    return rng.random(TILE_SHAPE, dtype=np.float32)
+    tile_shape = config.dataset.tile_shape
+    return rng.random(tile_shape, dtype=np.float32)
 
 
 def _tensor_to_uint8_image(channel: np.ndarray) -> np.ndarray:
@@ -65,16 +59,22 @@ def upload_satellite_previews(
     object_id: int,
     latitude: float,
     longitude: float,
-    source: str = "gee_sentinel2_l2a",
+    source: str | None = None,
     bucket: str | None = None,
     project_id: str | None = None,
+    config: Config | None = None,
 ) -> dict[str, str]:
     """Upload human-viewable PNG previews and metadata for a satellite tile to GCS."""
+    cfg = _cfg(config)
+    ee_cfg = cfg.earth_engine
+    dataset_cfg = cfg.dataset
+    resolved_source = source or ee_cfg.source_id
+
     red, green, blue, nir, swir = tensor
     rgb = np.stack([red, green, blue], axis=-1)
     rgb_uint8 = (np.clip(rgb, 0.0, 1.0) * 255).astype(np.uint8)
 
-    upload_kwargs: dict[str, Any] = {}
+    upload_kwargs: dict[str, Any] = {"config": cfg}
     if bucket is not None:
         upload_kwargs["bucket"] = bucket
     if project_id is not None:
@@ -100,11 +100,11 @@ def upload_satellite_previews(
         "OBJECTID": object_id,
         "latitude": latitude,
         "longitude": longitude,
-        "tile_shape": list(TILE_SHAPE),
-        "bands": list(BAND_NAMES),
-        "footprint_m": 1280,
-        "resolution_m": 10,
-        "source": source,
+        "tile_shape": list(dataset_cfg.tile_shape),
+        "bands": list(dataset_cfg.band_names),
+        "footprint_m": cfg.tile_footprint_m,
+        "resolution_m": ee_cfg.scale_m,
+        "source": resolved_source,
     }
     meta_uri = upload_json(
         object_id,
@@ -122,44 +122,60 @@ def _initialize_earth_engine(project_id: str) -> None:
 
 
 def _build_composite(
-    start_date: str = DEFAULT_START_DATE,
-    end_date: str = DEFAULT_END_DATE,
+    config: Config,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> Any:
     import ee
 
+    ee_cfg = config.earth_engine
     collection = (
-        ee.ImageCollection(S2_COLLECTION)
-        .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", MAX_CLOUD_COVER))
-        .filterDate(start_date, end_date)
+        ee.ImageCollection(ee_cfg.s2_collection)
+        .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", ee_cfg.max_cloud_cover))
+        .filterDate(
+            start_date or ee_cfg.start_date,
+            end_date or ee_cfg.end_date,
+        )
     )
-    return collection.median().select(BAND_NAMES_EE)
+    return collection.median().select(list(ee_cfg.band_names))
 
 
-def _arrays_to_tensor(band_arrays: dict[str, list[list[float]]]) -> np.ndarray:
+def _arrays_to_tensor(
+    band_arrays: dict[str, list[list[float]]],
+    config: Config,
+) -> np.ndarray:
     """Stack EE band arrays into a normalized (5, H, W) float32 tensor."""
+    ee_cfg = config.earth_engine
+    tile_shape = config.dataset.tile_shape
     channels = []
-    for band in BAND_NAMES_EE:
+    for band in ee_cfg.band_names:
         arr = np.array(band_arrays[band], dtype=np.float32)
-        normalized = np.clip(arr / REFLECTANCE_SCALE, 0.0, 1.0)
+        normalized = np.clip(arr / ee_cfg.reflectance_scale, 0.0, 1.0)
         channels.append(normalized)
 
     tensor = np.stack(channels, axis=0)
-    if tensor.shape != TILE_SHAPE:
-        resized = np.zeros(TILE_SHAPE, dtype=np.float32)
-        min_h = min(tensor.shape[1], TILE_SHAPE[1])
-        min_w = min(tensor.shape[2], TILE_SHAPE[2])
+    if tensor.shape != tile_shape:
+        resized = np.zeros(tile_shape, dtype=np.float32)
+        min_h = min(tensor.shape[1], tile_shape[1])
+        min_w = min(tensor.shape[2], tile_shape[2])
         resized[:, :min_h, :min_w] = tensor[:, :min_h, :min_w]
         tensor = resized
     return tensor.astype(np.float32)
 
 
-def _extract_tile(composite: Any, longitude: float, latitude: float) -> np.ndarray:
+def _extract_tile(
+    composite: Any,
+    longitude: float,
+    latitude: float,
+    config: Config,
+) -> np.ndarray:
     import ee
 
-    region = ee.Geometry.Point([longitude, latitude]).buffer(HALF_EXTENT_M).bounds()
+    half_extent_m = config.tile_half_extent_m
+    region = ee.Geometry.Point([longitude, latitude]).buffer(half_extent_m).bounds()
     sample = composite.sampleRectangle(region=region, defaultValue=0)
     band_data = sample.getInfo()["properties"]
-    return _arrays_to_tensor(band_data)
+    return _arrays_to_tensor(band_data, config)
 
 
 def _upload_tile_bundle(
@@ -170,8 +186,9 @@ def _upload_tile_bundle(
     source: str,
     bucket: str | None,
     project_id: str | None,
+    config: Config,
 ) -> None:
-    upload_kwargs: dict[str, Any] = {}
+    upload_kwargs: dict[str, Any] = {"config": config}
     if bucket is not None:
         upload_kwargs["bucket"] = bucket
     if project_id is not None:
@@ -186,43 +203,49 @@ def _upload_tile_bundle(
         source=source,
         bucket=bucket,
         project_id=project_id,
+        config=config,
     )
 
 
 def fetch_sentinel2_tensors(
     manifest_path: str | Path,
-    project_id: str = "datacenter-summer-poc",
+    project_id: str | None = None,
     bucket: str | None = None,
     limit: int | None = None,
-    start_date: str = DEFAULT_START_DATE,
-    end_date: str = DEFAULT_END_DATE,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    config: Config | None = None,
 ) -> int:
     """Extract Sentinel-2 tiles via Earth Engine and upload directly to GCS."""
-    _initialize_earth_engine(project_id)
-    composite = _build_composite(start_date=start_date, end_date=end_date)
+    cfg = _cfg(config)
+    resolved_project = project_id or cfg.gcp.project_id
+    _initialize_earth_engine(resolved_project)
+    composite = _build_composite(cfg, start_date=start_date, end_date=end_date)
 
     manifest = pd.read_csv(manifest_path)
     if limit is not None:
         manifest = manifest.head(limit)
 
     success_count = 0
+    ee_cfg = cfg.earth_engine
     for _, row in manifest.iterrows():
         obj_id = int(row["OBJECTID"])
         latitude = float(row["latitude"])
         longitude = float(row["longitude"])
         try:
-            tensor = _extract_tile(composite, longitude, latitude)
+            tensor = _extract_tile(composite, longitude, latitude, cfg)
             _upload_tile_bundle(
                 tensor,
                 obj_id,
                 latitude,
                 longitude,
-                source="gee_sentinel2_l2a",
+                source=ee_cfg.source_id,
                 bucket=bucket,
                 project_id=project_id,
+                config=cfg,
             )
             success_count += 1
-            if success_count % 10 == 0:
+            if success_count % ee_cfg.progress_log_every == 0:
                 print(f"Extracted {success_count}/{len(manifest)} tiles to GCS...")
         except Exception:
             logger.exception("Failed to extract tile for OBJECTID %d", obj_id)
@@ -236,23 +259,26 @@ def generate_mock_satellite_tensors(
     bucket: str | None = None,
     project_id: str | None = None,
     limit: int | None = None,
+    config: Config | None = None,
 ) -> int:
     """Generate mock tiles and upload directly to GCS for offline development."""
+    cfg = _cfg(config)
     manifest = pd.read_csv(manifest_path)
     if limit is not None:
         manifest = manifest.head(limit)
 
     for _, row in manifest.iterrows():
         obj_id = int(row["OBJECTID"])
-        mock_tensor = _generate_mock_tensor(obj_id)
+        mock_tensor = _generate_mock_tensor(obj_id, cfg)
         _upload_tile_bundle(
             mock_tensor,
             obj_id,
             float(row["latitude"]),
             float(row["longitude"]),
-            source="mock_sentinel2_poc",
+            source=cfg.earth_engine.mock_source_id,
             bucket=bucket,
             project_id=project_id,
+            config=cfg,
         )
 
     count = len(manifest)

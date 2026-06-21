@@ -24,7 +24,7 @@ python verify_setup.py
 
 ## Pipeline Execution
 
-Open and run [`pipeline.ipynb`](pipeline.ipynb) top to bottom:
+Open and run [`vision_pipeline.ipynb`](vision_pipeline.ipynb) top to bottom:
 
 1. **Environment check** — confirm imports, Earth Engine init, and package versions
 2. **Tabular preprocessing** — parse `data/buildings.csv`, upload `parsed_manifest.csv` to GCS
@@ -93,7 +93,7 @@ ty check .
 ## Repository Layout
 
 ```text
-├── pipeline.ipynb          # Orchestrator notebook
+├── vision_pipeline.ipynb   # Orchestrator notebook
 ├── verify_setup.py         # GCP environment validation
 ├── data/
 │   ├── buildings.csv       # Source building records

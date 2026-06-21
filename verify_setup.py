@@ -3,8 +3,7 @@
 
 from importlib.metadata import PackageNotFoundError, version
 
-PROJECT_ID = "datacenter-summer-poc"
-LOCATION = "us-central1"
+from src.config import load_config
 
 PACKAGE_NAMES = [
     "earthengine-api",
@@ -13,15 +12,16 @@ PACKAGE_NAMES = [
     "geemap",
     "pandas",
     "numpy",
+    "pyyaml",
 ]
 
 
-def verify_earth_engine() -> bool:
+def verify_earth_engine(project_id: str) -> bool:
     print("===== Earth Engine =====")
     try:
         import ee
 
-        ee.Initialize(project=PROJECT_ID)
+        ee.Initialize(project=project_id)
         image = ee.Image("NASA/NASADEM_HGT/001")
         print(f"SUCCESS: Earth Engine connected. Image ID: {image.id().getInfo()}")
         return True
@@ -30,15 +30,15 @@ def verify_earth_engine() -> bool:
         return False
 
 
-def verify_vertex_ai() -> bool:
+def verify_vertex_ai(project_id: str, location: str) -> bool:
     print("===== Vertex AI =====")
     try:
         import vertexai
 
-        vertexai.init(project=PROJECT_ID, location=LOCATION)
+        vertexai.init(project=project_id, location=location)
         print(
             f"SUCCESS: Vertex AI initialized "
-            f"(project={PROJECT_ID}, location={LOCATION})."
+            f"(project={project_id}, location={location})."
         )
         return True
     except Exception as exc:
@@ -46,12 +46,12 @@ def verify_vertex_ai() -> bool:
         return False
 
 
-def verify_cloud_storage() -> bool:
+def verify_cloud_storage(project_id: str) -> bool:
     print("===== Cloud Storage =====")
     try:
         from google.cloud import storage
 
-        client = storage.Client(project=PROJECT_ID)
+        client = storage.Client(project=project_id)
         bucket_names = [bucket.name for bucket in client.list_buckets()]
         if bucket_names:
             print("SUCCESS: Available buckets:")
@@ -86,10 +86,14 @@ def verify_package_versions() -> bool:
 
 
 def main() -> None:
+    config = load_config()
+    project_id = config.gcp.project_id
+    location = config.gcp.region
+
     results = {
-        "Earth Engine": verify_earth_engine(),
-        "Vertex AI": verify_vertex_ai(),
-        "Cloud Storage": verify_cloud_storage(),
+        "Earth Engine": verify_earth_engine(project_id),
+        "Vertex AI": verify_vertex_ai(project_id, location),
+        "Cloud Storage": verify_cloud_storage(project_id),
         "Installed Packages": verify_package_versions(),
     }
 

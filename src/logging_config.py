@@ -5,21 +5,29 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-DEFAULT_LOG_PATH = Path("logs/training_run.log")
+try:
+    from config import Config, load_config
+except ImportError:
+    from src.config import Config, load_config
 
 
-def setup_logging(log_path: Path | str = DEFAULT_LOG_PATH) -> logging.Logger:
+def setup_logging(
+    log_path: Path | str | None = None,
+    config: Config | None = None,
+) -> logging.Logger:
     """Configure root logger to write to console and a persistent log file."""
-    resolved_path = Path(log_path)
+    cfg = config or load_config()
+    log_cfg = cfg.logging
+    resolved_path = Path(log_path or log_cfg.log_path)
     resolved_path.parent.mkdir(parents=True, exist_ok=True)
 
-    logger = logging.getLogger("acm_research")
-    logger.setLevel(logging.INFO)
+    logger = logging.getLogger(log_cfg.logger_name)
+    logger.setLevel(getattr(logging, log_cfg.level.upper(), logging.INFO))
     logger.handlers.clear()
 
     formatter = logging.Formatter(
-        "[%(asctime)s] [%(levelname)s] %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+        log_cfg.message_format,
+        datefmt=log_cfg.date_format,
     )
 
     console_handler = logging.StreamHandler()
