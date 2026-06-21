@@ -51,6 +51,19 @@ def metadata_blob_name(object_id: int, config: Config | None = None) -> str:
     return f"{prefixes.raw_satellite}/tile_{object_id}_metadata.json"
 
 
+def tile_blob_names_for_object(
+    object_id: int, config: Config | None = None
+) -> list[str]:
+    """Return all GCS blob paths for one building tile bundle."""
+    return [
+        tile_blob_name(object_id, config=config),
+        raw_blob_name(object_id, "rgb", config=config),
+        raw_blob_name(object_id, "nir", config=config),
+        raw_blob_name(object_id, "swir", config=config),
+        metadata_blob_name(object_id, config=config),
+    ]
+
+
 def upload_bytes(
     blob_name: str,
     data: bytes,
@@ -59,7 +72,7 @@ def upload_bytes(
     project_id: str | None = None,
     config: Config | None = None,
 ) -> str:
-    """Upload raw bytes to a GCS blob and return its gs:// URI."""
+    """Upload raw bytes to a GCS blob, overwriting any existing object."""
     resolved_bucket, resolved_project = _resolve_gcs(config, bucket, project_id)
     blob = _bucket(resolved_bucket, resolved_project).blob(blob_name)
     blob.upload_from_string(data, content_type=content_type)
@@ -183,6 +196,56 @@ def list_tile_object_ids(
         if match:
             object_ids.add(int(match.group(1)))
     return object_ids
+
+
+def clear_satellite_imagery(
+    bucket: str | None = None,
+    project_id: str | None = None,
+    config: Config | None = None,
+) -> int:
+    """Delete all objects under image_tiles/ and raw_satellite/."""
+    cfg = _cfg(config)
+    resolved_bucket, resolved_project = _resolve_gcs(config, bucket, project_id)
+    client = _client(resolved_project)
+    prefixes = (cfg.gcs.prefixes.image_tiles, cfg.gcs.prefixes.raw_satellite)
+    deleted = 0
+    for prefix in prefixes:
+        blobs = list(client.list_blobs(resolved_bucket, prefix=f"{prefix}/"))
+        if blobs:
+            client.bucket(resolved_bucket).delete_blobs(blobs)
+            deleted += len(blobs)
+    print(
+        f"Cleared {deleted} satellite object(s) from "
+        f"gs://{resolved_bucket}/{{{prefixes[0]}, {prefixes[1]}}}/"
+    )
+    return deleted
+
+
+def prune_orphan_satellite_tiles(
+    allowed_object_ids: set[int],
+    bucket: str | None = None,
+    project_id: str | None = None,
+    config: Config | None = None,
+) -> int:
+    """Remove tile bundles in GCS that are not in the allowed OBJECTID set."""
+    stored_ids = list_tile_object_ids(
+        bucket=bucket, project_id=project_id, config=config
+    )
+    orphan_ids = stored_ids - allowed_object_ids
+    if not orphan_ids:
+        return 0
+
+    resolved_bucket, resolved_project = _resolve_gcs(config, bucket, project_id)
+    bucket_ref = _bucket(resolved_bucket, resolved_project)
+    deleted = 0
+    for object_id in sorted(orphan_ids):
+        for blob_name in tile_blob_names_for_object(object_id, config=config):
+            blob = bucket_ref.blob(blob_name)
+            if blob.exists():
+                blob.delete()
+                deleted += 1
+    print(f"Pruned {len(orphan_ids)} orphan tile(s) ({deleted} blob(s) deleted)")
+    return deleted
 
 
 def get_latest_run_prefix(

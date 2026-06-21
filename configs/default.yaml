@@ -31,6 +31,7 @@ earth_engine:
   end_date: "2026-01-01"
   max_cloud_cover: 5
   scale_m: 10
+  reproject_crs: EPSG:3857
   reflectance_scale: 10000.0
   source_id: gee_sentinel2_l2a
   mock_source_id: mock_sentinel2_poc
@@ -48,6 +49,7 @@ dataset:
 # Tabular preprocessing & label tiers
 # ---------------------------------------------------------------------------
 preprocessing:
+  building_status_filter: Completed
   gfa_columns: ["GFA", "BPGFA", "ApprovedGFA", "REATaxedGFA"]
   manifest_columns: ["OBJECTID", "latitude", "longitude", "target_label", "MaxGFA"]
   tier:
@@ -90,6 +92,7 @@ training:
 # ---------------------------------------------------------------------------
 vertex_ai:
   container_uri: us-docker.pkg.dev/vertex-ai/training/pytorch-gpu.2-0.py310:latest
+  staging_bucket: gs://datacenter-summer-poc-data
   machine_type: n1-standard-4
   accelerator_type: NVIDIA_TESLA_T4
   accelerator_count: 1
@@ -127,7 +130,8 @@ paths:
 # ---------------------------------------------------------------------------
 pipeline:
   use_mock: false
-  dev_limit: 5  # set to null for full extraction (~202 tiles)
+  dev_limit: null  # full extraction (~55 Completed buildings)
+  clear_satellite_gcs_before_extract: true
 
 # ---------------------------------------------------------------------------
 # EDA visualization

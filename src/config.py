@@ -45,6 +45,7 @@ class EarthEngineConfig:
     end_date: str
     max_cloud_cover: int
     scale_m: int
+    reproject_crs: str
     reflectance_scale: float
     source_id: str
     mock_source_id: str
@@ -87,6 +88,7 @@ class PreprocessingPaths:
 
 @dataclass(frozen=True)
 class PreprocessingConfig:
+    building_status_filter: str | None
     gfa_columns: tuple[str, ...]
     manifest_columns: tuple[str, ...]
     tier: TierConfig
@@ -121,6 +123,7 @@ class VertexPipelineConfig:
 @dataclass(frozen=True)
 class VertexAIConfig:
     container_uri: str
+    staging_bucket: str
     machine_type: str
     accelerator_type: str
     accelerator_count: int
@@ -153,6 +156,7 @@ class PathsConfig:
 class PipelineConfig:
     use_mock: bool
     dev_limit: int | None
+    clear_satellite_gcs_before_extract: bool
 
 
 @dataclass(frozen=True)
@@ -220,6 +224,7 @@ def _build_config(raw: dict[str, Any]) -> Config:
             end_date=ee_raw["end_date"],
             max_cloud_cover=int(ee_raw["max_cloud_cover"]),
             scale_m=scale_m,
+            reproject_crs=ee_raw["reproject_crs"],
             reflectance_scale=float(ee_raw["reflectance_scale"]),
             source_id=ee_raw["source_id"],
             mock_source_id=ee_raw["mock_source_id"],
@@ -231,6 +236,7 @@ def _build_config(raw: dict[str, Any]) -> Config:
             tile_px=tile_px,
         ),
         preprocessing=PreprocessingConfig(
+            building_status_filter=prep_raw.get("building_status_filter") or None,
             gfa_columns=tuple(prep_raw["gfa_columns"]),
             manifest_columns=tuple(prep_raw["manifest_columns"]),
             tier=TierConfig(
@@ -268,6 +274,7 @@ def _build_config(raw: dict[str, Any]) -> Config:
         ),
         vertex_ai=VertexAIConfig(
             container_uri=vertex_raw["container_uri"],
+            staging_bucket=vertex_raw["staging_bucket"],
             machine_type=vertex_raw["machine_type"],
             accelerator_type=vertex_raw["accelerator_type"],
             accelerator_count=int(vertex_raw["accelerator_count"]),
@@ -297,6 +304,9 @@ def _build_config(raw: dict[str, Any]) -> Config:
         pipeline=PipelineConfig(
             use_mock=bool(raw["pipeline"]["use_mock"]),
             dev_limit=raw["pipeline"]["dev_limit"],
+            clear_satellite_gcs_before_extract=bool(
+                raw["pipeline"]["clear_satellite_gcs_before_extract"]
+            ),
         ),
         eda=EDAConfig(
             impact_tier_labels={
@@ -312,8 +322,10 @@ def _build_config(raw: dict[str, Any]) -> Config:
 @lru_cache(maxsize=4)
 def load_config(path: str | Path | None = None) -> Config:
     """Load and parse the project configuration YAML file."""
-    resolved = path if path is not None else os.environ.get(
-        CONFIG_ENV_VAR, DEFAULT_CONFIG_PATH
+    resolved = (
+        path
+        if path is not None
+        else os.environ.get(CONFIG_ENV_VAR, DEFAULT_CONFIG_PATH)
     )
     config_path = Path(resolved)
     with config_path.open(encoding="utf-8") as handle:

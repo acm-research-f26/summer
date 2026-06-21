@@ -13,10 +13,22 @@ import pandas as pd
 
 try:
     from config import Config, load_config
-    from gcs import upload_json, upload_npy, upload_png
+    from gcs import (
+        clear_satellite_imagery,
+        prune_orphan_satellite_tiles,
+        upload_json,
+        upload_npy,
+        upload_png,
+    )
 except ImportError:
     from src.config import Config, load_config
-    from src.gcs import upload_json, upload_npy, upload_png
+    from src.gcs import (
+        clear_satellite_imagery,
+        prune_orphan_satellite_tiles,
+        upload_json,
+        upload_npy,
+        upload_png,
+    )
 
 if TYPE_CHECKING:
     from PIL import Image as PilImage
@@ -137,7 +149,10 @@ def _build_composite(
             end_date or ee_cfg.end_date,
         )
     )
-    return collection.median().select(list(ee_cfg.band_names))
+    return collection.median().select(list(ee_cfg.band_names)).reproject(
+        crs=ee_cfg.reproject_crs,
+        scale=ee_cfg.scale_m,
+    )
 
 
 def _arrays_to_tensor(
@@ -214,17 +229,30 @@ def fetch_sentinel2_tensors(
     limit: int | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
+    clear_existing: bool | None = None,
     config: Config | None = None,
 ) -> int:
     """Extract Sentinel-2 tiles via Earth Engine and upload directly to GCS."""
     cfg = _cfg(config)
     resolved_project = project_id or cfg.gcp.project_id
-    _initialize_earth_engine(resolved_project)
-    composite = _build_composite(cfg, start_date=start_date, end_date=end_date)
 
     manifest = pd.read_csv(manifest_path)
     if limit is not None:
         manifest = manifest.head(limit)
+    allowed_ids = set(manifest["OBJECTID"].astype(int))
+
+    should_clear = (
+        clear_existing
+        if clear_existing is not None
+        else cfg.pipeline.clear_satellite_gcs_before_extract
+    )
+    if should_clear:
+        clear_satellite_imagery(
+            bucket=bucket, project_id=resolved_project, config=cfg
+        )
+
+    _initialize_earth_engine(resolved_project)
+    composite = _build_composite(cfg, start_date=start_date, end_date=end_date)
 
     success_count = 0
     ee_cfg = cfg.earth_engine
@@ -250,6 +278,12 @@ def fetch_sentinel2_tensors(
         except Exception:
             logger.exception("Failed to extract tile for OBJECTID %d", obj_id)
 
+    prune_orphan_satellite_tiles(
+        allowed_ids,
+        bucket=bucket,
+        project_id=resolved_project,
+        config=cfg,
+    )
     print(f"Uploaded {success_count}/{len(manifest)} Sentinel-2 tiles to GCS")
     return success_count
 
@@ -259,13 +293,26 @@ def generate_mock_satellite_tensors(
     bucket: str | None = None,
     project_id: str | None = None,
     limit: int | None = None,
+    clear_existing: bool | None = None,
     config: Config | None = None,
 ) -> int:
     """Generate mock tiles and upload directly to GCS for offline development."""
     cfg = _cfg(config)
+    resolved_project = project_id or cfg.gcp.project_id
     manifest = pd.read_csv(manifest_path)
     if limit is not None:
         manifest = manifest.head(limit)
+    allowed_ids = set(manifest["OBJECTID"].astype(int))
+
+    should_clear = (
+        clear_existing
+        if clear_existing is not None
+        else cfg.pipeline.clear_satellite_gcs_before_extract
+    )
+    if should_clear:
+        clear_satellite_imagery(
+            bucket=bucket, project_id=resolved_project, config=cfg
+        )
 
     for _, row in manifest.iterrows():
         obj_id = int(row["OBJECTID"])
@@ -281,6 +328,12 @@ def generate_mock_satellite_tensors(
             config=cfg,
         )
 
+    prune_orphan_satellite_tiles(
+        allowed_ids,
+        bucket=bucket,
+        project_id=resolved_project,
+        config=cfg,
+    )
     count = len(manifest)
     print(f"Uploaded {count} mock multi-spectral tiles to GCS")
     return count

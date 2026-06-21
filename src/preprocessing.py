@@ -28,6 +28,11 @@ def run_tabular_preprocessing(
 
     df = pd.read_csv(source_csv)
 
+    status_filter = prep.building_status_filter
+    if status_filter:
+        df = df[df["BuildingStatus"] == status_filter].copy()
+        print(f"Filtered to BuildingStatus='{status_filter}': {len(df)} records")
+
     df["MaxGFA"] = df[list(prep.gfa_columns)].max(axis=1)
     df = df[df["MaxGFA"] > 0].copy()
 
