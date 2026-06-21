@@ -254,7 +254,7 @@ class SwitchWeapon(RealActions):
         if((self.weaponToSwitchTo == "chaingun" and currentWeapon == 4) or (self.weaponToSwitchTo == "shotgun" and currentWeapon == 3)):
             self.deactivateAction()
 
-        return previousAction
+        return previousAction, 0
                 
 TICKS_FIREANDSTRAFE_IS_ACTIVE = 100
 
@@ -269,7 +269,7 @@ class FireAndStrafe(RealActions):
         count, targetX, targetY = getClosestObjPosition(posX, posY, state, "NearestEnemy")
         if(count == 0):
             self.deactivateAction()
-            return previousAction
+            return previousAction, -10
         
         chosenAction, angle = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, self.strafeDirection)
 
@@ -282,7 +282,7 @@ class FireAndStrafe(RealActions):
             self.deactivateAction()
 
         previousAction = chosenAction
-        return chosenAction
+        return chosenAction, 0
 
 TICKS_DIRECTLYFLEE_IS_ACTIVE = 250
 
@@ -297,7 +297,7 @@ class DirectlyFlee(RealActions):
         count, targetX, targetY = getClosestObjPosition(posX, posY, state, "NearestEnemy")
         if(count == 0):
             self.deactivateAction()
-            return previousAction
+            return previousAction, -10
         
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, self.strafeDirection)
         
@@ -306,7 +306,7 @@ class DirectlyFlee(RealActions):
             self.deactivateAction()
 
         previousAction = chosenAction
-        return chosenAction
+        return chosenAction, 0
         
 class GoToHealth(RealActions):
     def activateAction(self, state):
@@ -319,14 +319,14 @@ class GoToHealth(RealActions):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
         if(health >= self.maxHealth):
-            if(self.prevHealth < self.health):
+            if(self.prevHealth < health):
                 # ok good, so we won
                 self.deactivateAction()
-                return previousAction
+                return previousAction, 0
             else:
                 # do punishment here!
                 self.deactivateAction()
-                return previousAction
+                return previousAction, -30
         
 
 
@@ -334,17 +334,17 @@ class GoToHealth(RealActions):
         if(count == 0):
             self.deactivateAction()
             # DO SOME PUNISHMENT!
-            return previousAction
+            return previousAction, -30
         
         if(health > self.prevHealth):
             self.deactivateAction()
-            return previousAction
+            return previousAction, 0
         
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, 0)
         
         previousAction = chosenAction
         self.prevHealth = health
-        return chosenAction
+        return chosenAction, 0
 class GoToAmmo(RealActions):
     def activateAction(self, state):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
@@ -362,11 +362,11 @@ class GoToAmmo(RealActions):
             if(self.prevAmmo < currentAmmo):
                 # ok good, so we won
                 self.deactivateAction()
-                return previousAction
+                return previousAction, 15
             else:
                 # do punishment here!
                 self.deactivateAction()
-                return previousAction
+                return previousAction, -15
         
 
 
@@ -374,17 +374,17 @@ class GoToAmmo(RealActions):
         if(count == 0):
             self.deactivateAction()
             # DO SOME PUNISHMENT!
-            return previousAction
+            return previousAction, -20
         
         if(currentAmmo > self.prevAmmo):
             self.deactivateAction()
-            return previousAction
+            return previousAction, 15
         
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, 0)
         
         previousAction = chosenAction
         self.prevAmmo = currentAmmo
-        return chosenAction
+        return chosenAction, 0
     
 class GoToArmor(RealActions):
     def activateAction(self, state):
@@ -400,11 +400,11 @@ class GoToArmor(RealActions):
             if(self.prevArmor < armor):
                 # ok good, so we won
                 self.deactivateAction()
-                return previousAction
+                return previousAction, 0
             else:
                 # do punishment here!
                 self.deactivateAction()
-                return previousAction
+                return previousAction, -20
         
 
 
@@ -412,17 +412,17 @@ class GoToArmor(RealActions):
         if(count == 0):
             self.deactivateAction()
             # DO SOME PUNISHMENT!
-            return previousAction
+            return previousAction, -20
         
         if(armor > self.prevArmor):
             self.deactivateAction()
-            return previousAction
+            return previousAction, 0
         
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, 0)
         
         previousAction = chosenAction
         self.prevArmor = armor
-        return chosenAction
+        return chosenAction, 0
     
 class MoveRandom(RealActions):
     def activateAction(self, state):
@@ -435,12 +435,12 @@ class MoveRandom(RealActions):
 
         if ((((posY - self.targetPoint[1]) ** 2 + (posX - self.targetPoint[0]) ** 2) ** (1/2)) < distanceUntilTooClose / 2):
             self.deactivateAction()
-            return previousAction
+            return previousAction, 0
 
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, self.targetPoint[0], self.targetPoint[1], 0)
 
         previousAction = chosenAction
-        return chosenAction
+        return chosenAction, 9
     
 def computeEnemyCentroid(state):
     positionArrays = []
@@ -483,16 +483,16 @@ class RunAway(RealActions):
         if(self.target == None):
             # punish first
             self.deactivateAction()
-            return previousAction
+            return previousAction, -25
 
         if ((((posY - self.target[1]) ** 2 + (posX - self.target[0]) ** 2) ** (1/2)) < distanceUntilTooClose * 2):
             self.deactivateAction()
-            return previousAction
+            return previousAction, 0
 
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, self.target[0], self.target[1], 0)
 
         previousAction = chosenAction
-        return chosenAction
+        return chosenAction, 0
 
 class ChargeIn(RealActions):
     def activateAction(self, state):
@@ -505,13 +505,13 @@ class ChargeIn(RealActions):
         if(not hasEnemies):
             # punish here
             self.deactivateAction()
-            return previousAction
+            return previousAction, -20
 
         if ((((posY - targetY) ** 2 + (posX - targetX) ** 2) ** (1/2)) < distanceUntilTooClose * 3):
             self.deactivateAction()
-            return previousAction
+            return previousAction, 0
 
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, 0)
 
         previousAction = chosenAction
-        return chosenAction
+        return chosenAction, 0
