@@ -1,7 +1,8 @@
-"""Sentinel-2 tensor extraction via Earth Engine and mock generation for offline dev."""
+"""Sentinel-2 tensor extraction via Earth Engine with direct GCS upload."""
 
 from __future__ import annotations
 
+import io
 import json
 import logging
 from pathlib import Path
@@ -9,6 +10,11 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
+
+try:
+    from gcs import upload_json, upload_npy, upload_png
+except ImportError:
+    from src.gcs import upload_json, upload_npy, upload_png
 
 if TYPE_CHECKING:
     from PIL import Image as PilImage
@@ -22,8 +28,6 @@ logger = logging.getLogger(__name__)
 
 TILE_SHAPE = (5, 128, 128)
 BAND_NAMES = ("red", "green", "blue", "nir", "swir")
-DEFAULT_RAW_DIR = "data/raw_satellite"
-DEFAULT_TILE_DIR = "data/image_tiles"
 
 S2_COLLECTION = "COPERNICUS/S2_SR_HARMONIZED"
 BAND_NAMES_EE = ["B4", "B3", "B2", "B8", "B11"]
@@ -48,33 +52,49 @@ def _tensor_to_uint8_image(channel: np.ndarray) -> np.ndarray:
     return (clipped * 255).astype(np.uint8)
 
 
-def save_raw_satellite_previews(
-    tensor: np.ndarray,
-    object_id: int,
-    raw_output_dir: str | Path,
-    latitude: float,
-    longitude: float,
-    source: str = "mock_sentinel2_poc",
-) -> dict[str, str]:
-    """Write human-viewable PNG previews and metadata for a satellite tile."""
+def _image_to_png_bytes(image: np.ndarray, mode: str) -> bytes:
     if PilImage is None:
         raise ImportError("Pillow is required to export raw satellite previews.")
+    buffer = io.BytesIO()
+    PilImage.fromarray(image, mode=mode).save(buffer, format="PNG")
+    return buffer.getvalue()
 
-    raw_dir = Path(raw_output_dir)
-    raw_dir.mkdir(parents=True, exist_ok=True)
 
+def upload_satellite_previews(
+    tensor: np.ndarray,
+    object_id: int,
+    latitude: float,
+    longitude: float,
+    source: str = "gee_sentinel2_l2a",
+    bucket: str | None = None,
+    project_id: str | None = None,
+) -> dict[str, str]:
+    """Upload human-viewable PNG previews and metadata for a satellite tile to GCS."""
     red, green, blue, nir, swir = tensor
     rgb = np.stack([red, green, blue], axis=-1)
     rgb_uint8 = (np.clip(rgb, 0.0, 1.0) * 255).astype(np.uint8)
 
-    rgb_path = raw_dir / f"tile_{object_id}_rgb.png"
-    nir_path = raw_dir / f"tile_{object_id}_nir.png"
-    swir_path = raw_dir / f"tile_{object_id}_swir.png"
-    meta_path = raw_dir / f"tile_{object_id}_metadata.json"
+    upload_kwargs: dict[str, Any] = {}
+    if bucket is not None:
+        upload_kwargs["bucket"] = bucket
+    if project_id is not None:
+        upload_kwargs["project_id"] = project_id
 
-    PilImage.fromarray(rgb_uint8, mode="RGB").save(rgb_path)
-    PilImage.fromarray(_tensor_to_uint8_image(nir), mode="L").save(nir_path)
-    PilImage.fromarray(_tensor_to_uint8_image(swir), mode="L").save(swir_path)
+    rgb_uri = upload_png(
+        object_id, "rgb", _image_to_png_bytes(rgb_uint8, "RGB"), **upload_kwargs
+    )
+    nir_uri = upload_png(
+        object_id,
+        "nir",
+        _image_to_png_bytes(_tensor_to_uint8_image(nir), "L"),
+        **upload_kwargs,
+    )
+    swir_uri = upload_png(
+        object_id,
+        "swir",
+        _image_to_png_bytes(_tensor_to_uint8_image(swir), "L"),
+        **upload_kwargs,
+    )
 
     metadata = {
         "OBJECTID": object_id,
@@ -86,14 +106,13 @@ def save_raw_satellite_previews(
         "resolution_m": 10,
         "source": source,
     }
-    meta_path.write_text(json.dumps(metadata, indent=2))
+    meta_uri = upload_json(
+        object_id,
+        json.dumps(metadata, indent=2),
+        **upload_kwargs,
+    )
 
-    return {
-        "rgb": str(rgb_path),
-        "nir": str(nir_path),
-        "swir": str(swir_path),
-        "metadata": str(meta_path),
-    }
+    return {"rgb": rgb_uri, "nir": nir_uri, "swir": swir_uri, "metadata": meta_uri}
 
 
 def _initialize_earth_engine(project_id: str) -> None:
@@ -143,19 +162,42 @@ def _extract_tile(composite: Any, longitude: float, latitude: float) -> np.ndarr
     return _arrays_to_tensor(band_data)
 
 
+def _upload_tile_bundle(
+    tensor: np.ndarray,
+    object_id: int,
+    latitude: float,
+    longitude: float,
+    source: str,
+    bucket: str | None,
+    project_id: str | None,
+) -> None:
+    upload_kwargs: dict[str, Any] = {}
+    if bucket is not None:
+        upload_kwargs["bucket"] = bucket
+    if project_id is not None:
+        upload_kwargs["project_id"] = project_id
+
+    upload_npy(object_id, tensor, **upload_kwargs)
+    upload_satellite_previews(
+        tensor,
+        object_id,
+        latitude=latitude,
+        longitude=longitude,
+        source=source,
+        bucket=bucket,
+        project_id=project_id,
+    )
+
+
 def fetch_sentinel2_tensors(
     manifest_path: str | Path,
-    output_dir: str | Path = DEFAULT_TILE_DIR,
-    raw_output_dir: str | Path = DEFAULT_RAW_DIR,
     project_id: str = "datacenter-summer-poc",
+    bucket: str | None = None,
     limit: int | None = None,
     start_date: str = DEFAULT_START_DATE,
     end_date: str = DEFAULT_END_DATE,
 ) -> int:
-    """Extract real Sentinel-2 5-channel tiles via Earth Engine per manifest row."""
-    output = Path(output_dir)
-    output.mkdir(parents=True, exist_ok=True)
-
+    """Extract Sentinel-2 tiles via Earth Engine and upload directly to GCS."""
     _initialize_earth_engine(project_id)
     composite = _build_composite(start_date=start_date, end_date=end_date)
 
@@ -170,38 +212,32 @@ def fetch_sentinel2_tensors(
         longitude = float(row["longitude"])
         try:
             tensor = _extract_tile(composite, longitude, latitude)
-            np.save(output / f"tile_{obj_id}.npy", tensor)
-            save_raw_satellite_previews(
+            _upload_tile_bundle(
                 tensor,
                 obj_id,
-                raw_output_dir,
-                latitude=latitude,
-                longitude=longitude,
+                latitude,
+                longitude,
                 source="gee_sentinel2_l2a",
+                bucket=bucket,
+                project_id=project_id,
             )
             success_count += 1
             if success_count % 10 == 0:
-                print(f"Extracted {success_count}/{len(manifest)} tiles...")
+                print(f"Extracted {success_count}/{len(manifest)} tiles to GCS...")
         except Exception:
             logger.exception("Failed to extract tile for OBJECTID %d", obj_id)
 
-    print(
-        f"Extracted {success_count}/{len(manifest)} Sentinel-2 tiles to {output} "
-        f"with previews in {raw_output_dir}"
-    )
+    print(f"Uploaded {success_count}/{len(manifest)} Sentinel-2 tiles to GCS")
     return success_count
 
 
 def generate_mock_satellite_tensors(
     manifest_path: str | Path,
-    output_dir: str | Path = DEFAULT_TILE_DIR,
-    raw_output_dir: str | Path = DEFAULT_RAW_DIR,
+    bucket: str | None = None,
+    project_id: str | None = None,
     limit: int | None = None,
 ) -> int:
-    """Generate mock 5-channel float32 tiles and raw PNG previews per OBJECTID."""
-    output = Path(output_dir)
-    output.mkdir(parents=True, exist_ok=True)
-
+    """Generate mock tiles and upload directly to GCS for offline development."""
     manifest = pd.read_csv(manifest_path)
     if limit is not None:
         manifest = manifest.head(limit)
@@ -209,18 +245,16 @@ def generate_mock_satellite_tensors(
     for _, row in manifest.iterrows():
         obj_id = int(row["OBJECTID"])
         mock_tensor = _generate_mock_tensor(obj_id)
-        np.save(output / f"tile_{obj_id}.npy", mock_tensor)
-        save_raw_satellite_previews(
+        _upload_tile_bundle(
             mock_tensor,
             obj_id,
-            raw_output_dir,
-            latitude=float(row["latitude"]),
-            longitude=float(row["longitude"]),
+            float(row["latitude"]),
+            float(row["longitude"]),
+            source="mock_sentinel2_poc",
+            bucket=bucket,
+            project_id=project_id,
         )
 
     count = len(manifest)
-    print(
-        f"Generated {count} mock multi-spectral tiles in {output} "
-        f"and raw previews in {raw_output_dir}"
-    )
+    print(f"Uploaded {count} mock multi-spectral tiles to GCS")
     return count

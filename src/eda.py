@@ -2,12 +2,30 @@
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.figure import Figure
+
+try:
+    from gcs import (
+        GCS_BUCKET,
+        blob_exists,
+        download_blob,
+        raw_blob_name,
+        tile_blob_name,
+    )
+except ImportError:
+    from src.gcs import (
+        GCS_BUCKET,
+        blob_exists,
+        download_blob,
+        raw_blob_name,
+        tile_blob_name,
+    )
 
 IMPACT_TIER_LABELS = {
     0: "Low (Enterprise/Edge)",
@@ -63,6 +81,48 @@ def verify_tile_alignment(
     print(f"Manifest records: {len(report)}")
     print(f"Missing .npy tiles: {missing_npy}")
     print(f"Missing raw RGB previews: {missing_raw}")
+    return report
+
+
+def verify_tile_alignment_gcs(
+    manifest_path: str | Path,
+    bucket: str = GCS_BUCKET,
+    project_id: str | None = None,
+) -> pd.DataFrame:
+    """Report missing GCS tiles and raw previews for each OBJECTID."""
+    manifest = pd.read_csv(manifest_path)
+    records: list[dict[str, object]] = []
+
+    for _, row in manifest.iterrows():
+        obj_id = int(row["OBJECTID"])
+        npy_blob = tile_blob_name(obj_id)
+        rgb_blob = raw_blob_name(obj_id, "rgb")
+        has_npy = blob_exists(npy_blob, bucket=bucket, project_id=project_id)
+        has_raw_rgb = blob_exists(rgb_blob, bucket=bucket, project_id=project_id)
+        npy_shape = None
+        if has_npy:
+            blob_data = download_blob(npy_blob, bucket=bucket, project_id=project_id)
+            tensor = np.load(io.BytesIO(blob_data))
+            npy_shape = tuple(tensor.shape)
+
+        records.append(
+            {
+                "OBJECTID": obj_id,
+                "latitude": row["latitude"],
+                "longitude": row["longitude"],
+                "target_label": int(row["target_label"]),
+                "has_npy": has_npy,
+                "has_raw_rgb": has_raw_rgb,
+                "npy_shape": npy_shape,
+            }
+        )
+
+    report = pd.DataFrame(records)
+    missing_npy = (~report["has_npy"]).sum()
+    missing_raw = (~report["has_raw_rgb"]).sum()
+    print(f"Manifest records: {len(report)}")
+    print(f"Missing GCS .npy tiles: {missing_npy}")
+    print(f"Missing GCS raw RGB previews: {missing_raw}")
     return report
 
 
@@ -234,5 +294,66 @@ def plot_satellite_samples(
             )
 
     fig.suptitle("Satellite Tile QA: Raw Previews vs Processed Tensors", y=1.02)
+    fig.tight_layout()
+    return fig
+
+
+def plot_satellite_samples_gcs(
+    context_df: pd.DataFrame,
+    sample_object_ids: list[int] | None = None,
+    n_samples: int = 4,
+    bucket: str = GCS_BUCKET,
+    project_id: str | None = None,
+) -> Figure:
+    """Visualize GCS-hosted tiles for sample OBJECTIDs."""
+    if sample_object_ids is None:
+        sample_object_ids = context_df["OBJECTID"].head(n_samples).astype(int).tolist()
+
+    n = len(sample_object_ids)
+    fig, axes = plt.subplots(n, 4, figsize=(14, 3.5 * n))
+    if n == 1:
+        axes = np.array([axes])
+
+    band_titles = ["Raw RGB Preview", "NPY RGB", "NPY NIR", "NPY SWIR"]
+    for row_idx, obj_id in enumerate(sample_object_ids):
+        row = context_df[context_df["OBJECTID"] == obj_id].iloc[0]
+        rgb_bytes = download_blob(
+            raw_blob_name(obj_id, "rgb"), bucket=bucket, project_id=project_id
+        )
+        tile_bytes = download_blob(
+            tile_blob_name(obj_id), bucket=bucket, project_id=project_id
+        )
+        tensor = np.load(io.BytesIO(tile_bytes))
+        rgb_preview = plt.imread(io.BytesIO(rgb_bytes), format="png")
+
+        images = [
+            rgb_preview,
+            np.transpose(tensor[:3], (1, 2, 0)),
+            tensor[3],
+            tensor[4],
+        ]
+        for col_idx, (image, title) in enumerate(zip(images, band_titles, strict=True)):
+            ax = axes[row_idx, col_idx]
+            if col_idx == 0:
+                ax.imshow(image)
+            elif col_idx == 1:
+                ax.imshow(np.clip(image, 0.0, 1.0))
+            else:
+                ax.imshow(image, cmap="gray")
+            if row_idx == 0:
+                ax.set_title(title)
+            ax.axis("off")
+
+        building_name = str(row.get("BuildingName", "Unknown"))
+        if col_idx == 0:
+            ax.set_ylabel(
+                f"ID {obj_id}\n{building_name[:22]}",
+                fontsize=8,
+                rotation=0,
+                labelpad=42,
+                va="center",
+            )
+
+    fig.suptitle("Satellite Tile QA (GCS): Raw Previews vs Processed Tensors", y=1.02)
     fig.tight_layout()
     return fig
