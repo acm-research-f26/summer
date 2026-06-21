@@ -1,0 +1,6 @@
+data/
+checkpoints/
+results/
+chemberta/
+rnafm/
+structures/*.pdb
