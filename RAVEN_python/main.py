@@ -14,12 +14,12 @@ src_path = os.path.join(current_dir, 'src')
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
-# Now import from src
-from signal_processing import SignalProcessor
-from k_complex_detection import KComplexDetector
-from spindle_detection import SpindleDetector
-from delta_wave_detection import DeltaWaveDetector
-from visualization import RAVENVisualizer
+# Now import from src package
+from src.signal_processing import SignalProcessor
+from src.k_complex_detection import KComplexDetector
+from src.spindle_detection import SpindleDetector
+from src.delta_wave_detection import DeltaWaveDetector
+from src.visualization import RAVENVisualizer
 
 import matplotlib.pyplot as plt
 import numpy as np
