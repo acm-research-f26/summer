@@ -1,0 +1,9 @@
+pandapower>=2.13
+numpy
+pandas
+networkx
+
+# Install the SDK(s) for whichever LLM provider you use:
+# anthropic
+# openai
+# google-generativeai
