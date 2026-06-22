@@ -11,6 +11,8 @@ However, one issue with behavior trees (and FSMs too, along with symbolic AI in 
 
 This is where this project comes in, which builds behavior trees dynamically, by basically having mutliple generations of randomly created behavior trees. These trees are created by selecting from a pool of conditions that serve as checks / branch points, and then actions that serve as actions the AI takes that are the leaves of the tree. Then, each tree plays the game and gains rewards/punishments for doing well, which are summed up at the end of the generation. Then, the ones that did best get to 'survive' into the next generation, while also having the possibility to 'mutate' or 'reproduce'. Eventually, the idea is that statistically the trees will die off and new trees will come in such that the remaining ones are ones proven to 'survive' in that environment, aka being quite effective binary trees.
 
+In this case, I am building a behavior tree to play a game of deathmatch (surviving waves of monsters) in VizDOOM, which is an API that has Doom scenarios and allows you to put in custom scenarios as well so that you can train DOOM bots.
+
 ## 🎯 Motivation
 I really wanted to try something with genetic programming, and I also wanted to learn a bit more about behavior trees and how they're implemented since my research topic will involve AI in games, so coming across this paper seemed like a really good first starting point for the first implementation. Additionally, I chose to do DOOM for the game cause I thought it would be cool. 
 
@@ -26,24 +28,42 @@ It also had a 'static constraint' that basically made the BT follow certain rule
 Additionally, as for the novelty I introduced, they originally tested their new methodology using the game Pac-Man, meanwhile I decided to test it by doing it on the game Doom instead since it'd be cooler.
 
 ## 🧠 Methodology
+1. **Environment Construction**:
 
+One of the hardest parts was actually just getting the ideal environment to test the game in set up. The main issue was that VizDOOM came with only a few default scenarios, and of these I chose the Deathmatch one, where they're placed into an arena with a bunch of resources where enemies also get to spawn, and it basically has to try and survive for as long as possible while killing as many enemies as possible.
 
-1. **Evaluation**:
-   - 
-   - 
-   - 
-2. **Metrics**:
+The main issue was that I wanted the player to spawn in with certain weapons, and to have the map open without walls between the player and resources unlike the default scenario. So for this what I had to do was actually install a Doom map editor, and physicallly remove the walls, as well as write a game scrip to give the player guns on startup. An issue I then ran into ws that this script would seem to override the control logic script VizDOOM had for the deathmatch scenario meaning all the other things like enemies spawning wouldn't work, so then I had to use a decompiler to get what the original Deathmatch code was like so that it could be added back in manually (thank god for Claude, I asked ChatGPT to decompile it initially but it kept being stupid). In the end though I was finally able to get the environment set up as I'd like, after learning a great deal about how Doom map design works lol.
+![alt text](image.png)
+
+2. **Behavior Tree Setup**:
+Setting up the behavior tree itself was not too bad, I just had to define a tree system which I was able to do since I'd taken Data Structures. Then though, I had to define ALL the conditions and actions that would be possible myself, and boy that took a really long time. Conditions weren't so bad since it was just looking at the game state and looking at certain values for variables in that state, but for actions I had to create a system to press the right inputs and the right time and also determine when the action was complete, it was not exactly fun. For example for "Fire And Strafe", I had to make a system to find the angle at which the player was from the closest enemy, determine how to turn to make that angle smaller, and also determine what WASD keys should be pressed so that they'd be moving to the side of the enemy. Basically Geometry SUCKS.
+
+Creating the system to go through the tree evaluating conditions and seleccting an action wasn't too bad, I could just decide what child to go down based on the current node condition's value, and stop when I reached an action.
+
+3. **Implementing Genetic Programming**:
+This part was surprisingly not the hardest part. I had to do some research and thinking into how the GP side would work primarily; mutation was decently easy, and so was finding the best trees as I could sort the trees by score. For this aspect the most difficulty came from crossover, as I had to make sure the exact same subtrees weren't selected, make sure the 2 subtrees aren't from the same exact tree, reduce the probability of the crossover based on how far in depth the subrrees were (to make sure we wouldn't have abnormally short or long trees), and also reduce the prbability based on the dynamci constraint.
+
+To take care of that dynamic constraint actually, what I did was use soemthing called a 'Canonical Representation', where I would capture each unique subtree by storing the (nodeval, left, right) as the value for that subtree, where the "left" and "right" values would actually be filled in versions of recursively doing the same call on the left and right children of the root of the current subtree. Turns out this lets you compare subtreesperfectly surprisingly, it's like really really cool. But then we can see the count of each subtree with a hashmap, and if the count is above a predefined threshold, we can then mark all the nodes within that subtree (besides the root) as 'protected', so if we ever try to do a crossover involving those nodes then their probability is reduced.
+
+4. **Results And Evaluation**:
    - 
 
 #### Additional Methodology:
 - **Something optional**: Sentence
 
 ## 🌍 Impact
-The main impact of this project will 
+This project will allow game designers to design better systems for AI in games, especially when they may be unsure of how to design an AI in such an environment. They can just specify
+the possible conditions that can be checked, what actions can be taken, and any other constraints that may be needed, and then see how different combinations of behavior trees can cause differnet results which eventually converge in the 'ideal' behavior tree. This does so in a way that makes sure 'good' subtrees are usually not destroyed as well.
+
+This project in particular has the impact of showing how the project can be adapted to more complex scenarios. While before it was just for Pac Man, this project shows how it can still be adapted to even 3D gaems without necessarily needing vision as input either.
 
 #### Future Work
-- **Something optional**: Sentence
+A couple things can be done to improve the project. First, the quality of the behavior tree itself can be improved. Right now, we have it so that each internal node is a binary conditioin that can branch to eitehr 'yes' or 'no', and the leaf nodes represnet a single action. Howver, Behavior Trees can be much more complex, and there's at least 3 things we can add among many others. First is a internal node that has children as a bunch of actions taht functions as an 'OR' loop, where it will try to run all those actions until one of them completes. Another is a Sequential node that, when fired, runs actions in a sequence that only finishes when the last action finishes. Finally, another thing is normally in behavior trees when an action finishes, instead of re-running the behavior tree starting at the root (like my version does), instead normally behavior trees will go to the last completed action's parent and then check if it needs to continue percolating upwards or not, keeping the behavior tree 'defined' within a certain area still.
+
+Moving away from the behavior tree, it'd also be nice to try to adapt this to other games besides DOOM and games that require a great deal more of complexity, as it would be interesting to see how they do. However, the main limitation behind this is finding a game for which ti will work - i was only able to do Doom thanks to the open source library that did all the game engine stuff for me.
+
+Finally, it may be interesting to try to further expand on the GP side of things. One thing I'd like to do is change the dynamic constraint so instead of picking common subtrees, it picks trees that overall perform effectively instead, which can be say evaluatied by something like summing up the scores of all the actions within that subtree or similar. It may also be more interesting to just look further into the GP side in general.
 
 **Additional Sources:**
-- The actual paper: https://www.mdpi.com/2076-3417/8/7/1077?utm_source=chatgpt.com
+- The actual paper: https://www.mdpi.com/2076-3417/8/7/1077
 - VizDoom Library: https://vizdoom.farama.org/
