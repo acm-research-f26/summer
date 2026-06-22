@@ -84,8 +84,6 @@ XGBoost
 
 This project shows how medical image segmentation outputs can be converted into a more clinically meaningful form. Instead of stopping at anatomical masks, the pipeline produces fibroid-level predictions that relate directly to treatment-planning questions.
 
-The project also highlights a major issue in medical machine learning: leakage can make a model look better than it really is. By deliberately excluding features that encode the label definition, this implementation provides a more honest test of whether non-leaky geometry can predict cavity involvement.
-
 ## Data Setup
 
 Download the UMD dataset from Figshare:
