@@ -1,0 +1,28 @@
+{
+  "binary": {
+    "0": "not_dark",
+    "1": "dark"
+  },
+  "multiclass": {
+    "0": {
+      "key": "urgency",
+      "display": "Urgency"
+    },
+    "1": {
+      "key": "scarcity",
+      "display": "Scarcity"
+    },
+    "2": {
+      "key": "social_proof",
+      "display": "Social Proof"
+    },
+    "3": {
+      "key": "guilt_wording",
+      "display": "Guilt-wording"
+    },
+    "4": {
+      "key": "other",
+      "display": "Other"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+               precision    recall  f1-score   support
+
+guilt_wording     1.0000    0.8333    0.9091         6
+        other     0.6250    0.8333    0.7143         6
+     scarcity     1.0000    1.0000    1.0000         6
+ social_proof     1.0000    0.8333    0.9091         6
+      urgency     0.8333    0.8333    0.8333         6
+
+     accuracy                         0.8667        30
+    macro avg     0.8917    0.8667    0.8732        30
+ weighted avg     0.8917    0.8667    0.8732        30

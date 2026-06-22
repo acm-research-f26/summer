@@ -1,0 +1,8 @@
+              precision    recall  f1-score   support
+
+    not_dark     0.7143    1.0000    0.8333        10
+        dark     1.0000    0.8667    0.9286        30
+
+    accuracy                         0.9000        40
+   macro avg     0.8571    0.9333    0.8810        40
+weighted avg     0.9286    0.9000    0.9048        40
