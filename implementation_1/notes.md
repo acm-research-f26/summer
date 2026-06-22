@@ -19,21 +19,29 @@ Establish a reproducible baseline using browser-use/web-ui. I want to launch the
 
 - [x] Clone upstream repo locally (`../web-ui`)
 - [x] Read README (venv, requirements, Playwright, `.env`)
-- [ ] Add this `implementation_1` folder with run script and notes
-- [ ] Finish upstream install (`.venv`, requirements, Playwright chromium)
-- [ ] Copy `.env.example` → `.env` and add API keys
-- [ ] First successful launch of `webui.py`
+- [x] Add this `implementation_1` folder with run script and notes
+- [x] Finish upstream install (`.venv`, requirements, Playwright chromium)
+- [x] Copy `.env.example` → `.env` (still need valid API keys)
+- [x] First successful launch of `webui.py` via `./run_baseline.sh`
 
 ## Still need to test
 
-- Does Playwright Chromium install cleanly here?
-- Can I complete one simple task end-to-end (e.g. open a site, find text)?
-- What shows up in the UI logs when a task fails?
+- [ ] Fix Playwright chromium install (`playwright install` — browser binary missing on first task)
+- [ ] Get a working LLM key (Google key was missing; OpenAI hit quota limit)
+- [ ] Complete one simple task end-to-end (e.g. open a site, find text)
+- [ ] What shows up in the UI logs when a task fails?
 
 ## Early observations
 
-Haven't run anything yet — starting with env setup. Expect setup to take longer than the docs suggest.
+**2026-06-21 — first baseline run**
+
+- `./run_baseline.sh` works: Gradio comes up at http://127.0.0.1:7788 using the project venv.
+- Submitted a test task: *"open utd website and see when the admissions open"*.
+- Gemini failed first — `GOOGLE_API_KEY` not set in `.env`.
+- Switched to OpenAI `gpt-4o` in the UI. LLM init got further but hit `429 insufficient_quota`.
+- Browser side also failed: Playwright chromium binary not installed yet (`playwright install` needed).
+- So UI launch is fine; end-to-end agent run is blocked on keys + Playwright for now.
 
 ## Next research direction
 
-Once baseline runs: pick 2–3 fixed tasks, run each a few times, log pass/fail and step count in `results/`. Then decide what to change—not before I trust the baseline.
+Fix Playwright + API keys, rerun the UTD admissions task, then pick 2–3 fixed sites and log pass/fail + step count in `results/`. Not changing the agent until the baseline is trustworthy.
