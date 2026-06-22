@@ -27,16 +27,19 @@ Uses simulated data created via Lenstronomy, a simulation tool used frequently i
    - AUC-ROC on held-out test set
    - Non-lens classification accuracy as a sanity check (confirms any performance gap is redshift-specific, not general model weakness)
 5. **Metrics**:
-   - 
+   - AUC-ROC on held-out test set??
 
 #### Additional Methodology:
-- **Something optional**: Sentence
+- **Something optional**: n/a?
 
 ## 🌍 Impact
 By being able to better identify instances of redshift gravitational lensing, we can eventually use this data to get closer estimates of constants like the hubble constant
 
 #### Future Work
-- **Something optional**: Sentence
+- **Something optional**: Applying this model to large datasets to see how it works..?
+- Future implementations:
+- Extend augmentation to multi-band imaging (g, r, i bands) with realistic SED-based color shifting rather than brightness-only dimming
+- Investigate whether ViT-based architectures (e.g. GraViT) exhibit the same redshift bias as ResNet-18, or whether global attention mechanisms are naturally more robust
 
 **Additional Sources:**
 - Wilde et al. 2022, MNRAS — CNN interpretability and color bias in lens detection
