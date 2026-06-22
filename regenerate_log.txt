@@ -1,0 +1,134 @@
+Found 33 PSG files
+[1/33] Analyzing SC4001E0-PSG...
+Loaded: 7950000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[2/33] Analyzing SC4002E0-PSG...
+Loaded: 8490000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[3/33] Analyzing SC4011E0-PSG...
+Loaded: 8406000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[4/33] Analyzing SC4012E0-PSG...
+Loaded: 8550000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[5/33] Analyzing SC4021E0-PSG...
+Loaded: 8412000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[6/33] Analyzing SC4022E0-PSG...
+Loaded: 8268000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[7/33] Analyzing SC4031E0-PSG...
+Loaded: 8460000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[8/33] Analyzing SC4032E0-PSG...
+Loaded: 8196000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[9/33] Analyzing SC4041E0-PSG...
+Loaded: 7710000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[10/33] Analyzing SC4042E0-PSG...
+Loaded: 8376000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[11/33] Analyzing SC4051E0-PSG...
+Loaded: 8166000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[12/33] Analyzing SC4052E0-PSG...
+Loaded: 8418000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[13/33] Analyzing SC4061E0-PSG...
+Loaded: 8310000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[14/33] Analyzing SC4062E0-PSG...
+Loaded: 8490000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[15/33] Analyzing SC4071E0-PSG...
+Loaded: 8430000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[16/33] Analyzing SC4072E0-PSG...
+Loaded: 8310000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[17/33] Analyzing SC4081E0-PSG...
+Loaded: 8388000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[18/33] Analyzing SC4082E0-PSG...
+Loaded: 7902000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[19/33] Analyzing SC4091E0-PSG...
+Loaded: 8196000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[20/33] Analyzing SC4092E0-PSG...
+Loaded: 8574000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[21/33] Analyzing SC4101E0-PSG...
+Loaded: 8160000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[22/33] Analyzing SC4102E0-PSG...
+Loaded: 8574000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[23/33] Analyzing SC4111E0-PSG...
+Loaded: 7926000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[24/33] Analyzing SC4112E0-PSG...
+Loaded: 8340000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[25/33] Analyzing SC4121E0-PSG...
+Loaded: 8358000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[26/33] Analyzing SC4122E0-PSG...
+Loaded: 7818000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[27/33] Analyzing SC4131E0-PSG...
+Loaded: 8442000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[28/33] Analyzing SC4141E0-PSG...
+Loaded: 8268000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[29/33] Analyzing SC4142E0-PSG...
+Loaded: 8322000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[30/33] Analyzing SC4151E0-PSG...
+Loaded: 7860000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[31/33] Analyzing SC4152E0-PSG...
+Loaded: 8592000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[32/33] Analyzing SC4161E0-PSG...
+Loaded: 7878000 samples at 100 Hz
+Channel: EEG Fpz-Cz
+  ERROR: 'RAVEN' object has no attribute 'detect'
+[33/33] Analyzing SC4162E0-PSG...
+Error loading EDF: physionet.org/files/sleep-edfx/1.0.0/sleep-cassette/SC4162E0-PSG.edf: the file is not EDF(+) or BDF(+) compliant (Filesize)
+  ERROR: Failed to load physionet.org/files/sleep-edfx/1.0.0/sleep-cassette/SC4162E0-PSG.edf
+Done!
+filesize 43515532 != 18240*2752+2048 
