@@ -230,6 +230,50 @@ def _save_loss_curve(
     plt.close(fig)
 
 
+def _compute_classification_metrics(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    num_classes: int,
+    class_labels: dict[int, str] | None = None,
+) -> dict:
+    """Compute overall accuracy and per-class precision, recall, F1 from arrays."""
+    overall_accuracy = float(np.mean(y_true == y_pred))
+
+    per_class: dict[str, dict[str, float]] = {}
+    for c in range(num_classes):
+        tp = int(np.sum((y_pred == c) & (y_true == c)))
+        fp = int(np.sum((y_pred == c) & (y_true != c)))
+        fn = int(np.sum((y_pred != c) & (y_true == c)))
+
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        f1 = (
+            2 * precision * recall / (precision + recall)
+            if (precision + recall) > 0
+            else 0.0
+        )
+        label = class_labels.get(c, str(c)) if class_labels else str(c)
+        per_class[label] = {
+            "precision": round(precision, 4),
+            "recall": round(recall, 4),
+            "f1": round(f1, 4),
+            "support": int(np.sum(y_true == c)),
+        }
+
+    # Macro averages (unweighted mean across classes).
+    macro_precision = float(np.mean([v["precision"] for v in per_class.values()]))
+    macro_recall = float(np.mean([v["recall"] for v in per_class.values()]))
+    macro_f1 = float(np.mean([v["f1"] for v in per_class.values()]))
+
+    return {
+        "overall_accuracy": round(overall_accuracy, 4),
+        "macro_precision": round(macro_precision, 4),
+        "macro_recall": round(macro_recall, 4),
+        "macro_f1": round(macro_f1, 4),
+        "per_class": per_class,
+    }
+
+
 def _save_training_artifacts(
     model_dir: Path,
     history: list[dict[str, float]],
@@ -240,9 +284,14 @@ def _save_training_artifacts(
     config: Config,
 ) -> None:
     class_distribution = manifest["target_label"].value_counts().sort_index().to_dict()
+    class_labels = {int(k): v for k, v in config.eda.impact_tier_labels.items()}
+    classification_metrics = _compute_classification_metrics(
+        y_true, y_pred, num_classes=config.model.num_classes, class_labels=class_labels
+    )
     metrics = {
         "hyperparameters": hyperparams,
         "class_distribution": class_distribution,
+        "classification_metrics": classification_metrics,
         "epoch_history": history,
         "final_train_loss": history[-1]["train_loss"] if history else None,
         "final_val_loss": history[-1]["val_loss"] if history else None,

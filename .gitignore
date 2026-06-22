@@ -1,9 +1,22 @@
 /data
-artifacts/
 logs/
 /.cursor
 .vscode/
 .ruff_cache/
 .DS_Store
-src/__pycache__/
+
+# Ignore all __pycache__ directories anywhere in the repo
+__pycache__/
+*.pyc
+*.pyo
+__pycache__/
+
+# Exclude all training artifacts except the loss curve used in README.
+# Must use wildcard-per-level pattern — gitignore cannot un-ignore files
+# inside an ignored directory (artifacts/ would block all child exceptions).
+artifacts/*
+!artifacts/20260622-020230/
+artifacts/20260622-020230/*
+!artifacts/20260622-020230/loss_curve.png
+
 docs/

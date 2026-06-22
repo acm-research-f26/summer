@@ -53,7 +53,25 @@ def display_training_summary(artifacts_dir: str | Path) -> dict:
     print("Hyperparameters:", metrics.get("hyperparameters"))
     print("Class distribution:", metrics.get("class_distribution"))
     print("Final train loss:", metrics.get("final_train_loss"))
-    print("Final val loss:", metrics.get("final_val_loss"))
+    print("Final val loss:  ", metrics.get("final_val_loss"))
+
+    cm = metrics.get("classification_metrics")
+    if cm:
+        print("\n--- Validation Classification Metrics ---")
+        print(f"  Overall accuracy : {cm['overall_accuracy']:.4f}")
+        print(f"  Macro precision  : {cm['macro_precision']:.4f}")
+        print(f"  Macro recall     : {cm['macro_recall']:.4f}")
+        print(f"  Macro F1         : {cm['macro_f1']:.4f}")
+        print("\n  Per-class breakdown:")
+        for label, vals in cm["per_class"].items():
+            print(
+                f"    {label:<28} "
+                f"P={vals['precision']:.3f}  "
+                f"R={vals['recall']:.3f}  "
+                f"F1={vals['f1']:.3f}  "
+                f"(n={vals['support']})"
+            )
+
     return metrics
 
 
