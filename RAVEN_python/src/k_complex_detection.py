@@ -21,13 +21,13 @@ class KComplexDetector:
         """Return default thresholds from paper"""
         return {
             'power_delta': 0.5,
-            'rms_delta': 20e-6,  # 20 μV
+            'rms_delta': 10.0,
             'hilbert_std': 1.5,
             'correlation': 0.6,
             'cwt': 0.3,
             'artifact': 100,
-            'amplitude_min': 75e-6,  # 75 μV
-            'rms_standard_max': 180e-6,  # 180 μV
+            'amplitude_min': 40.0,
+            'rms_standard_max': 60.0,
             'duration_min': 0.5,
             'duration_max': 3.0
         }
@@ -80,9 +80,6 @@ class KComplexDetector:
         if peak_to_peak < self.thresholds['amplitude_min']:
             return False
 
-        if np.max(delta_segment) < 30 or np.min(delta_segment) > -30:
-            return False
-
         peaks, _ = find_peaks(delta_segment, height=0.25 * np.max(delta_segment), distance=int(self.fs * 0.2))
         valleys, _ = find_peaks(-delta_segment, height=0.25 * np.max(-delta_segment), distance=int(self.fs * 0.2))
         if len(peaks) == 0 or len(valleys) == 0:
@@ -122,34 +119,6 @@ class KComplexDetector:
         else:
             segment_resampled = segment_norm
 
-        return np.corrcoef(segment_resampled, template)[0, 1]
-    
-    def _compute_correlation(self, segment):
-        """Compute correlation with canonical K-complex template"""
-        # Generate template
-        duration = 1.0  # 1 second
-        t = np.linspace(-duration/2, duration/2, int(duration * self.fs))
-        
-        # Standard K-complex template from paper
-        template = np.exp(-(t**2) / (2 * 0.15**2)) * (-1 + 0.5 * (t/0.15)**2)
-        template = template / np.max(np.abs(template))
-        
-        # Normalize segment
-        segment_norm = segment - np.mean(segment)
-        if np.max(np.abs(segment_norm)) > 0:
-            segment_norm = segment_norm / np.max(np.abs(segment_norm))
-        
-        # Resample to match template length
-        if len(segment_norm) != len(template):
-            from scipy import interpolate
-            x_old = np.linspace(0, 1, len(segment_norm))
-            x_new = np.linspace(0, 1, len(template))
-            f = interpolate.interp1d(x_old, segment_norm)
-            segment_resampled = f(x_new)
-        else:
-            segment_resampled = segment_norm
-        
-        # Compute correlation
         return np.corrcoef(segment_resampled, template)[0, 1]
     
     def _find_connected_regions(self, mask):

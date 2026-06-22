@@ -110,15 +110,13 @@ class DeltaWaveDetector:
     
     def _count_slow_waves(self, delta_segment):
         """Count number of slow waves"""
-        # Find zero crossings
         zero_crossings = np.where(np.diff(np.sign(delta_segment)) != 0)[0]
-        
         if len(zero_crossings) < 2:
             return 0
-        
-        # Calculate wavelengths
+
         wavelengths = np.diff(zero_crossings) / self.fs
-        return np.sum(wavelengths > self.thresholds['wavelength_threshold'])
+        valid = (wavelengths >= self.thresholds['wavelength_min']) & (wavelengths <= self.thresholds['wavelength_max'])
+        return int(np.sum(valid))
     
     def _compute_confidence(self, segment):
         """Compute delta wave confidence"""
