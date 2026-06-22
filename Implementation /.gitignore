@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.egg-info/
+
+data/raw/
+data/UMD/
+data/demo/
+data/processed/*.csv
+data/processed/*.txt
+reports/*.csv
+reports/*.png
+reports/*.joblib
+reports/eda/
+reports/mask_previews/
+reports/demo/
