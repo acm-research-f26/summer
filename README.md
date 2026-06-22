@@ -16,11 +16,11 @@ Iteration 1 was focused on designing a model that can identify which dark patter
 Dark patterns are everywhere and something that I've noticed constantly. I feel that they're taxonomies and identification when humans are doing it are well researched, but the hole in the research is that this cannot be done well automously. One group of papers tells you a trick is ther and another tells you tricks work in general, but there aren't models that are efficient in detecting these things. To design that, you first need a model that can read a screen, so iteration 1 builds the text half.
 
 ## 🧩 Novelty
-- **Score-to-behavior link:**: Prior work either detects dark patterns or measures their effect on people, but not both. The eventual contribution is connecting a model's per-screen manipulation score to a measured change in real decisions.
+- **Score-to-behavior link**: Prior work either detects dark patterns or measures their effect on people, but not both. The eventual contribution is connecting a model's per-screen manipulation score to a measured change in real decisions.
 - **Burdensome requirement of human analysis**: The experienced eye of a human is necessary to classify and analyze these UI decisions, so the novelty here is to automate this process while maintaining high accuracy, which is to be tested and fine-tuned with the help of study groups.
 
 ## 🧠 Methodology
-1. **Dataset**: [Mathur "Dark Patterns at Scale"](https://github.com/aruneshmathur/dark-patterns) (1,818 labeled lines, 1,178 after cleaning) for the category task, plus [ec-darkpattern](https://github.com/yamanalab/ec-darkpattern) (a balanced set) for the yes/no task. We also made a bigger training set by having an LLM reword each line a bunch of ways to diversify the training set.
+1. **Dataset**: [Mathur "Dark Patterns at Scale"](https://github.com/aruneshmathur/dark-patterns) (1,818 labeled lines, 1,178 after cleaning) for the category task, plus [ec-darkpattern](https://github.com/yamanalab/ec-darkpattern) (a balanced set) for the yes/no task. I also made a bigger training set by having an LLM reword each line a bunch of ways to diversify the training set.
 2. **Architecture**: fine-tuned **DistilBERT**, with a simple TF-IDF + logistic regression baseline to compare against.
    - Two models: one for "is this dark," one for the 5 categories (urgency, scarcity, social proof, guilt wording, other).
    - Trained the category one with and without class weights. Weighted won.
@@ -28,7 +28,7 @@ Dark patterns are everywhere and something that I've noticed constantly. I feel 
 3. **Evaluation**:
    - 70/15/15 split, fixed seed, so both models get tested on the same rows.
    - A normal test set.
-   - A harder test was also used; 40 lines we wrote by hand in different wording and non-shopping spots (apps, subscriptions, cookie banners), to see if it holds up on stuff it's never seen.
+   - A harder test was also used; 40 lines written by hand in different wording and non-shopping spots (apps, subscriptions, cookie banners), to see if it holds up on stuff it's never seen.
 4. **Metrics**: accuracy, macro-F1, per-class F1, confusion matrices.
 
 #### Additional Methodology:
@@ -44,7 +44,7 @@ Normal test (same kind of data it trained on):
 | Binary | DistilBERT | **0.97** |
 | Categories | DistilBERT | **0.97** |
  
-This looked good but was suspicious. Here's before and after we added the reworded training data:
+This looked good but was suspicious. Here's before and after reworded training data was added:
  
 | Test | Binary | Categories | Urgency |
 |---|---|---|---|
