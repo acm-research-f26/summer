@@ -1,3 +1,6 @@
+// Reads edges.txt and builds both pointer based and CSR graph structures,
+// then runs BFS on both while logging degree and memory address info to trace.csv
+
 #include <iostream>
 #include <vector>
 #include <queue>

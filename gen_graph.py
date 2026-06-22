@@ -1,9 +1,11 @@
+# Generates a uniform or power law graph and writes edges to edges.txt (undirected)
+
 import networkx as nx
 
 # ==========================================
 # TOGGLE GRAPH TYPE HERE: "UNIFORM" or "POWER_LAW"
 # ==========================================
-GRAPH_TYPE = "POWER_LAW"  
+GRAPH_TYPE = "UNIFORM"  
 
 print(f"Generating a {GRAPH_TYPE} graph topology...")
 

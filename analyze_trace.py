@@ -1,3 +1,6 @@
+# Reads trace.csv, categorizes vertices into low/medium/high degree buckets,
+# and analyzes access patterns for pointer vs CSR layouts to understand spatial locality.
+
 import pandas as pd
 import numpy as np
 import os
