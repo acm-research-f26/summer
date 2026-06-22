@@ -6,9 +6,12 @@ import logging
 from pathlib import Path
 
 try:
-    from config import Config, load_config
+    from .config import Config, load_config
 except ImportError:
-    from src.config import Config, load_config
+    try:
+        from config import Config, load_config
+    except ImportError:
+        from src.config import Config, load_config
 
 
 def setup_logging(

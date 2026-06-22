@@ -1,4 +1,4 @@
-"""Vertex AI training entrypoint for the data center vision classifier."""
+"""Training entrypoint for the data center vision classifier (local + Vertex AI)."""
 
 from __future__ import annotations
 
@@ -16,15 +16,44 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset, Subset
 
 try:
-    from config import Config, load_config
-    from logging_config import log_epoch_metrics, setup_logging
-    from model_def import DataCenterVisionNet
+    from .config import Config, load_config
+    from .logging_config import log_epoch_metrics, setup_logging
+    from .model_def import DataCenterVisionNet
 except ImportError:
-    from src.config import Config, load_config
-    from src.logging_config import log_epoch_metrics, setup_logging
-    from src.model_def import DataCenterVisionNet
+    try:
+        from config import Config, load_config
+        from logging_config import log_epoch_metrics, setup_logging
+        from model_def import DataCenterVisionNet
+    except ImportError:
+        from src.config import Config, load_config
+        from src.logging_config import log_epoch_metrics, setup_logging
+        from src.model_def import DataCenterVisionNet
 
 logger = setup_logging()
+
+
+def resolve_device(device: str | None = None, config: Config | None = None) -> torch.device:
+    """Resolve the compute device for training.
+
+    Priority for "auto": MPS (Apple Silicon) > CUDA > CPU.
+    """
+    cfg = _cfg_lazy(config)
+    spec = device if device is not None else cfg.training.device
+    if spec == "auto":
+        if torch.backends.mps.is_available():
+            chosen = torch.device("mps")
+        elif torch.cuda.is_available():
+            chosen = torch.device("cuda")
+        else:
+            chosen = torch.device("cpu")
+    else:
+        chosen = torch.device(spec)
+    logger.info("Training device: %s", chosen)
+    return chosen
+
+
+def _cfg_lazy(config: Config | None) -> Config:
+    return config or load_config()
 
 
 def _cfg(config: Config | None) -> Config:
@@ -108,13 +137,17 @@ def _run_epoch(
     dataloader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
     criterion: nn.Module,
     optimizer: torch.optim.Optimizer | None,
+    device: torch.device | None = None,
 ) -> float:
+    resolved_device = device or torch.device("cpu")
     is_train = optimizer is not None
     model.train(is_train)
     epoch_loss = 0.0
     batch_count = 0
 
     for imgs, labels in dataloader:
+        imgs = imgs.to(resolved_device)
+        labels = labels.to(resolved_device)
         if is_train:
             optimizer.zero_grad()
         outputs = model(imgs)
@@ -131,12 +164,16 @@ def _run_epoch(
 def _collect_predictions(
     model: nn.Module,
     dataloader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
+    device: torch.device | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
+    resolved_device = device or torch.device("cpu")
     model.eval()
     preds: list[int] = []
     labels: list[int] = []
     with torch.no_grad():
         for imgs, batch_labels in dataloader:
+            imgs = imgs.to(resolved_device)
+            batch_labels = batch_labels.to(resolved_device)
             outputs = model(imgs)
             preds.extend(outputs.argmax(dim=1).cpu().numpy().tolist())
             labels.extend(batch_labels.cpu().numpy().tolist())
@@ -234,9 +271,10 @@ def train(
     batch_size: int | None = None,
     learning_rate: float | None = None,
     val_fraction: float | None = None,
+    device: str | torch.device | None = None,
     config: Config | None = None,
 ) -> None:
-    """Run the Vertex AI training loop and persist model weights plus eval artifacts."""
+    """Run the training loop and persist model weights plus eval artifacts."""
     cfg = _cfg(config)
     train_cfg = cfg.training
     gcs_cfg = cfg.gcs
@@ -249,6 +287,11 @@ def train(
     resolved_val_fraction = (
         val_fraction if val_fraction is not None else train_cfg.val_fraction
     )
+
+    if isinstance(device, torch.device):
+        resolved_device = device
+    else:
+        resolved_device = resolve_device(device, cfg)
 
     training_path = Path(training_dir)
     csv_path = training_path / gcs_cfg.manifest_blob
@@ -268,28 +311,31 @@ def train(
         Subset(full_dataset, train_idx),
         batch_size=resolved_batch_size,
         shuffle=True,
+        num_workers=0,
     )
     val_loader = DataLoader(
         Subset(full_dataset, val_idx),
         batch_size=resolved_batch_size,
         shuffle=False,
+        num_workers=0,
     )
 
-    model = DataCenterVisionNet(config=cfg)
-    class_weights = compute_class_weights(manifest, config=cfg)
+    model = DataCenterVisionNet(config=cfg).to(resolved_device)
+    class_weights = compute_class_weights(manifest, config=cfg).to(resolved_device)
     criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = torch.optim.Adam(model.parameters(), lr=resolved_learning_rate)
 
     history: list[dict[str, float]] = []
     logger.info(
-        "Beginning Vertex AI training loop (%d train / %d val samples)...",
+        "Beginning training loop (%d train / %d val samples) on %s...",
         len(train_idx),
         len(val_idx),
+        resolved_device,
     )
     for epoch in range(resolved_epochs):
         try:
-            train_loss = _run_epoch(model, train_loader, criterion, optimizer)
-            val_loss = _run_epoch(model, val_loader, criterion, optimizer=None)
+            train_loss = _run_epoch(model, train_loader, criterion, optimizer, resolved_device)
+            val_loss = _run_epoch(model, val_loader, criterion, optimizer=None, device=resolved_device)
             current_lr = optimizer.param_groups[0]["lr"]
             history.append(
                 {
@@ -316,7 +362,7 @@ def train(
     torch.save(model.state_dict(), model_output_path / "model.pth")
     logger.info("Model weights saved to %s", model_output_path / "model.pth")
 
-    y_pred, y_true = _collect_predictions(model, val_loader)
+    y_pred, y_true = _collect_predictions(model, val_loader, resolved_device)
     _save_training_artifacts(
         model_output_path,
         history,
@@ -326,11 +372,21 @@ def train(
             "batch_size": resolved_batch_size,
             "learning_rate": resolved_learning_rate,
             "val_fraction": resolved_val_fraction,
+            "device": str(resolved_device),
         },
         y_true=y_true,
         y_pred=y_pred,
         config=cfg,
     )
+
+
+def _gs_uri_to_fuse_path(uri: str) -> Path:
+    """Map gs://bucket/key to the Vertex AI GCS FUSE mount at /gcs/bucket/key."""
+    if not uri.startswith("gs://"):
+        return Path(uri)
+    without_scheme = uri.removeprefix("gs://")
+    bucket, _, key = without_scheme.partition("/")
+    return Path("/gcs") / bucket / key
 
 
 def resolve_training_dir(training_arg: str, config: Config | None = None) -> Path:
@@ -343,6 +399,13 @@ def resolve_training_dir(training_arg: str, config: Config | None = None) -> Pat
     if fuse_path.exists():
         return fuse_path
     return candidate
+
+
+def resolve_model_dir(model_arg: str, config: Config | None = None) -> Path:
+    """Resolve model output directory, translating gs:// URIs to GCS FUSE paths."""
+    if model_arg.startswith("gs://"):
+        return _gs_uri_to_fuse_path(model_arg)
+    return Path(model_arg)
 
 
 def parse_args(
@@ -370,6 +433,12 @@ def parse_args(
         type=str,
         default=os.environ.get("AIP_MODEL_DIR", vertex_cfg.default_model_dir),
     )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default=None,
+        help="Compute device: auto | mps | cuda | cpu (overrides config)",
+    )
     return parser.parse_args(argv)
 
 
@@ -378,10 +447,11 @@ if __name__ == "__main__":
     try:
         train(
             training_dir=resolve_training_dir(args.training),
-            model_dir=args.model_dir,
+            model_dir=resolve_model_dir(args.model_dir),
             epochs=args.epochs,
             batch_size=args.batch_size,
+            device=args.device,
         )
     except Exception:
-        logger.exception("Vertex AI entrypoint failed")
+        logger.exception("Training entrypoint failed")
         sys.exit(1)

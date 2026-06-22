@@ -7,9 +7,12 @@ import torch.nn as nn
 from torchvision import models
 
 try:
-    from config import Config, load_config
+    from .config import Config, load_config
 except ImportError:
-    from src.config import Config, load_config
+    try:
+        from config import Config, load_config
+    except ImportError:
+        from src.config import Config, load_config
 
 
 class DataCenterVisionNet(nn.Module):

@@ -10,8 +10,12 @@ from typing import Any
 
 import yaml
 
-DEFAULT_CONFIG_PATH = (
-    Path(__file__).resolve().parent.parent / "configs" / "default.yaml"
+_BUNDLED_CONFIG = Path(__file__).resolve().parent / "configs" / "default.yaml"
+_BUNDLED_FLAT_CONFIG = Path(__file__).resolve().parent / "default.yaml"
+_REPO_CONFIG = Path(__file__).resolve().parent.parent / "configs" / "default.yaml"
+DEFAULT_CONFIG_PATH = next(
+    (path for path in (_BUNDLED_CONFIG, _BUNDLED_FLAT_CONFIG, _REPO_CONFIG) if path.exists()),
+    _REPO_CONFIG,
 )
 CONFIG_ENV_VAR = "SUMMER_CONFIG_PATH"
 
@@ -106,6 +110,8 @@ class ModelConfig:
 
 @dataclass(frozen=True)
 class TrainingConfig:
+    runtime: str  # "local" | "vertex"
+    device: str   # "auto" | "mps" | "cuda" | "cpu"
     epochs: int
     batch_size: int
     learning_rate: float
@@ -265,6 +271,8 @@ def _build_config(raw: dict[str, Any]) -> Config:
             in_channels=int(raw["model"]["in_channels"]),
         ),
         training=TrainingConfig(
+            runtime=str(raw["training"].get("runtime", "local")),
+            device=str(raw["training"].get("device", "auto")),
             epochs=int(raw["training"]["epochs"]),
             batch_size=int(raw["training"]["batch_size"]),
             learning_rate=float(raw["training"]["learning_rate"]),
