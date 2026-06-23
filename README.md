@@ -46,7 +46,174 @@ This part was surprisingly not the hardest part. I had to do some research and t
 To take care of that dynamic constraint actually, what I did was use soemthing called a 'Canonical Representation', where I would capture each unique subtree by storing the (nodeval, left, right) as the value for that subtree, where the "left" and "right" values would actually be filled in versions of recursively doing the same call on the left and right children of the root of the current subtree. Turns out this lets you compare subtreesperfectly surprisingly, it's like really really cool. But then we can see the count of each subtree with a hashmap, and if the count is above a predefined threshold, we can then mark all the nodes within that subtree (besides the root) as 'protected', so if we ever try to do a crossover involving those nodes then their probability is reduced.
 
 4. **Results And Evaluation**:
-   - 
+For evaluating results, what I did was at the end of the final generation, take the top 3 trees, print out their structure, and then save them to files. Then, the "testTree" file lets you play with those trees. I forgot to print the scores, but here is an example of a behavior tree's struture:
+[COND] chaingunEquipped?
+  T:
+    [COND] lowAmmoCurrent?
+      T:
+        [COND] highHealth?
+          T:
+            [COND] armorNearby?
+              T:
+                [COND] lowHealth?
+                  T:
+                    [COND] manyEnemies?
+                      T:
+                        [ACTION] switchWeapon
+                      F:
+                        [ACTION] fireAndStrafe
+                  F:
+                    [COND] lowTimeRemaining?
+                      T:
+                        [ACTION] goToArmor
+                      F:
+                        [ACTION] fireAndStrafe
+              F:
+                [COND] healthNearby?
+                  T:
+                    [COND] highArmor?
+                      T:
+                        [ACTION] switchWeapon
+                      F:
+                        [ACTION] directlyFlee
+                  F:
+                    [COND] someRangedEnemy?
+                      T:
+                        [ACTION] goToHealth
+                      F:
+                        [ACTION] goToAmmo
+          F:
+            [COND] ammo3Nearby?
+              T:
+                [COND] lowHealth?
+                  T:
+                    [COND] ammo4Nearby?
+                      T:
+                        [ACTION] directlyFlee
+                      F:
+                        [ACTION] chargeIn
+                  F:
+                    [COND] noEnemies?
+                      T:
+                        [ACTION] goToArmor
+                      F:
+                        [ACTION] switchWeapon
+              F:
+                [COND] mediumArmor?
+                  T:
+                    [COND] manyEnemies?
+                      T:
+                        [ACTION] directlyFlee
+                      F:
+                        [ACTION] goToHealth
+                  F:
+                    [COND] mediumHealth?
+                      T:
+                        [ACTION] moveRandom
+                      F:
+                        [ACTION] directlyFlee
+      F:
+        [ACTION] switchWeapon
+  F:
+    [COND] mediumArmor?
+      T:
+        [COND] manyEnemies?
+          T:
+            [COND] mediumHealth?
+              T:
+                [COND] highArmor?
+                  T:
+                    [COND] lowAmmoCurrent?
+                      T:
+                        [ACTION] switchWeapon
+                      F:
+                        [ACTION] directlyFlee
+                  F:
+                    [COND] lowAmmoCurrent?
+                      T:
+                        [ACTION] directlyFlee
+                      F:
+                        [ACTION] fireAndStrafe
+              F:
+                [COND] nearbyEnemy?
+                  T:
+                    [ACTION] fireAndStrafe
+                  F:
+                    [COND] ammo3Nearby?
+                      T:
+                        [ACTION] directlyFlee
+                      F:
+                        [ACTION] switchWeapon
+          F:
+            [ACTION] directlyFlee
+      F:
+        [COND] recentlyHurt?
+          T:
+            [COND] lowAmmoCurrent?
+              T:
+                [COND] lowHealth?
+                  T:
+                    [COND] manyEnemies?
+                      T:
+                        [ACTION] fireAndStrafe
+                      F:
+                        [ACTION] runAway
+                  F:
+                    [COND] lowTimeRemaining?
+                      T:
+                        [ACTION] fireAndStrafe
+                      F:
+                        [ACTION] fireAndStrafe
+              F:
+                [COND] noEnemies?
+                  T:
+                    [COND] highArmor?
+                      T:
+                        [ACTION] directlyFlee
+                      F:
+                        [ACTION] goToArmor
+                  F:
+                    [COND] mediumHealth?
+                      T:
+                        [ACTION] goToHealth
+                      F:
+                        [ACTION] goToHealth
+          F:
+            [COND] lowTimeRemaining?
+              T:
+                [COND] ammo4Nearby?
+                  T:
+                    [COND] ammo3Nearby?
+                      T:
+                        [ACTION] goToArmor
+                      F:
+                        [ACTION] runAway
+                  F:
+                    [COND] nearbyEnemy?
+                      T:
+                        [ACTION] fireAndStrafe
+                      F:
+                        [ACTION] chargeIn
+              F:
+                [COND] mediumHealth?
+                  T:
+                    [COND] someRangedEnemy?
+                      T:
+                        [ACTION] moveRandom
+                      F:
+                        [ACTION] switchWeapon
+                  F:
+                    [COND] lowHealth?
+                      T:
+                        [ACTION] goToArmor
+                      F:
+                        [ACTION] goToArmor
+
+One thing is it does look a bit bloated and in general some of the logic doesn't make sense, but some of it does. For example, you can see for the nearbyEnemy condition, if there is one nearby it will fire at it, otherwise it will try to charge wherever they are, which makes sense. However, there is also weird stuff, like the condition  near the top where if there's many enemies it will try tos witch enemies, which is weird.
+
+When playing with the trees though it's a bit unusual, it looks like it doesn't actually end up firing its gun often and it just tries to run awaound in circles often. I think this might be an issue with the movement but I'm not entirely sure, this is something I'll look into later.
+
+Another change I'd like to make is adding more generations, as it actually turns out you may want around 20 or more generations to run though instead of a measly 5. Overall the results show that it's learning something, but a lot of tuning can still be done.
 
 #### Additional Methodology:
 - **Something optional**: Sentence
@@ -67,3 +234,8 @@ Finally, it may be interesting to try to further expand on the GP side of things
 **Additional Sources:**
 - The actual paper: https://www.mdpi.com/2076-3417/8/7/1077
 - VizDoom Library: https://vizdoom.farama.org/
+
+**Setup Guide:**
+First, you have to install 2 python libraries. First is vizdoom (which is for DOOM and its api), and second is numpy. You can install these with the command "pip install numpy vizdoom".
+
+After this, just run "deathmatchGame.ipynb" (you can set variables you'd like to change in constants.py), wait for it to finish, and then run testTree.ipynb to see how the trees perform. That should be it I think.
