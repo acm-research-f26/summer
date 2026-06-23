@@ -1,0 +1,10 @@
+numberGenerations = 5 
+maxDepth = 6 
+treesPerGeneration = 40
+episodesPerTree = 4
+chanceOfEndingEarly = 0.12 
+numTreesForReproduction = 10
+numTreesForCrossover = 5
+numTreesForMutation = 5
+depthProbabilityMultiplier = 0.2
+countToBeProtected = 2
