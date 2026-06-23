@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Generated / large data — don't commit synthetic or real patient data
+data/synthetic/
+data/real/
+data/OhioT1DM/
+
+# Generated results (regenerate via main.py)
+results/*.png
+results/*.csv
+
+# OS / IDE
+.DS_Store
+.vscode/
+*.log
