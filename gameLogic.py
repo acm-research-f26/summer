@@ -205,16 +205,16 @@ class RealActions:
         if(abs(angleDirection) < 360 - abs(angleDirection)):
             angleMagnitude = abs(angleDirection)
             if angleDirection > 0:
-                print(f"moving {angleMagnitude} and turning left")
+                # print(f"moving {angleMagnitude} and turning left")
                 return (angleMagnitude, np.copy(actionMapping["turn_left"]))
-            print(f"moving {angleMagnitude} and turning right")
+            # print(f"moving {angleMagnitude} and turning right")
             return (angleMagnitude, np.copy(actionMapping["turn_right"]))
         else:
             angleMagnitude = 360 - abs(angleDirection)
             if angleDirection > 0:
-                print(f"angle is {angleMagnitude} and turning right")
+                # print(f"angle is {angleMagnitude} and turning right")
                 return (angleMagnitude, np.copy(actionMapping["turn_right"]))
-            print(f"angle is {angleMagnitude} and turning left")
+            # print(f"angle is {angleMagnitude} and turning left")
             return (angleMagnitude, np.copy(actionMapping["turn_left"]))
         
     '''
@@ -231,36 +231,37 @@ class RealActions:
 
         
         leftRightMovementFactor = actionMapping["move_left"] if np.array_equal(tempAngleDirection, actionMapping["turn_left"]) else actionMapping["move_right"]
-        print(f"idea of moving left is: {np.array_equal(tempAngleDirection, actionMapping["turn_left"])}")
+        # print(f"idea of moving left is: {np.array_equal(tempAngleDirection, actionMapping["turn_left"])}")
         if(abs(tempAngleVal) < 1):
             trueActionVector += actionMapping["move_forward"]
-            print("moving forward too")
+            # print("moving forward too")
         elif(abs(tempAngleVal) < 89):
-            print("moving forward too along with left/right")
+            # print("moving forward too along with left/right")
             trueActionVector += leftRightMovementFactor + actionMapping["move_forward"]
         elif(abs(tempAngleVal) < 91):
-            print("moving solely left/right")
+            # print("moving solely left/right")
             trueActionVector += leftRightMovementFactor
         elif(abs(tempAngleVal) < 179):
             trueActionVector += leftRightMovementFactor + actionMapping["move_backward"]
-            print("moving backward along with left/right")
+            # print("moving backward along with left/right")
         else:
             trueActionVector += actionMapping["move_backward"]
-            print("moving backward too")
+            # print("moving backward too")
 
-        print(trueActionVector)
+        # print(trueActionVector)
 
         return trueActionVector, trueAngleVal
 
 class SwitchWeapon(RealActions):
-    def activateAction(self, state):
+    def activateAction(self, state, tick):
         global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
+        self.startTick = tick
         self.weaponToSwitchTo = "chaingun" if currentWeapon == 3 else "shotgun"
         previousAction += actionMapping[f"select_{self.weaponToSwitchTo}"]
         super().activateAction(state)
         
-    def updateTickAndReturnAction(self, state):
+    def updateTickAndReturnAction(self, state, tick):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables        
         if((self.weaponToSwitchTo == "chaingun" and currentWeapon == 4) or (self.weaponToSwitchTo == "shotgun" and currentWeapon == 3)):
             self.deactivateAction()
@@ -270,11 +271,12 @@ class SwitchWeapon(RealActions):
 TICKS_FIREANDSTRAFE_IS_ACTIVE = 100
 
 class FireAndStrafe(RealActions):
-    def activateAction(self, state):
+    def activateAction(self, state, tick):
         self.strafeDirection = 90 if random.random() > 0.5 else 270
+        self.startTick = tick
         self.currentTick = 0
         super().activateAction(state)
-    def updateTickAndReturnAction(self, state):        
+    def updateTickAndReturnAction(self, state, tick):        
         global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         count, targetX, targetY = getClosestObjPosition(posX, posY, state, "NearestEnemy")
@@ -288,8 +290,7 @@ class FireAndStrafe(RealActions):
         if(angle < 1):
             chosenAction += actionMapping["attack"]
 
-        self.currentTick += 1
-        if(self.currentTick >= TICKS_FIREANDSTRAFE_IS_ACTIVE):
+        if(self.startTick - tick >= TICKS_FIREANDSTRAFE_IS_ACTIVE):
             self.deactivateAction()
 
         previousAction = chosenAction
@@ -298,11 +299,11 @@ class FireAndStrafe(RealActions):
 TICKS_DIRECTLYFLEE_IS_ACTIVE = 250
 
 class DirectlyFlee(RealActions):
-    def activateAction(self, state):
+    def activateAction(self, state, tick):
         self.strafeDirection = 135 if random.random() > 0.5 else 225
-        self.currentTick = 0
+        self.startTick = tick
         super().activateAction(state)
-    def updateTickAndReturnAction(self, state):
+    def updateTickAndReturnAction(self, state, tick):
         global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         count, targetX, targetY = getClosestObjPosition(posX, posY, state, "NearestEnemy")
@@ -316,22 +317,22 @@ class DirectlyFlee(RealActions):
         
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, self.strafeDirection)
 
-        print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}, current angle is {angle}")
+        # print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}, current angle is {angle}")
         
-        self.currentTick += 1
-        if(self.currentTick >= TICKS_DIRECTLYFLEE_IS_ACTIVE):
+        if(self.startTick - tick >= TICKS_DIRECTLYFLEE_IS_ACTIVE):
             self.deactivateAction()
 
         previousAction = chosenAction
         return chosenAction, 0
         
 class GoToHealth(RealActions):
-    def activateAction(self, state):
+    def activateAction(self, state, tick):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
+        self.startTick = tick
         self.prevHealth = health
         self.maxHealth = 100
         super().activateAction(state)
-    def updateTickAndReturnAction(self,state):
+    def updateTickAndReturnAction(self,state, tick):
         global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
@@ -363,13 +364,14 @@ class GoToHealth(RealActions):
         self.prevHealth = health
         return chosenAction, 0
 class GoToAmmo(RealActions):
-    def activateAction(self, state):
+    def activateAction(self, state, tick):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
+        self.startTick = tick
         self.ammoTypeToGet = "shells" if currentWeapon == 3 else "clips"
         self.prevAmmo = firstWepAmmo if currentWeapon == 3 else secondWepAmmo
         self.maxAmmo = 50 if currentWeapon == 3 else 200
         super().activateAction(state)
-    def updateTickAndReturnAction(self,state):
+    def updateTickAndReturnAction(self,state, tick):
         global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
@@ -389,7 +391,7 @@ class GoToAmmo(RealActions):
 
         count, targetX, targetY = getClosestObjPosition(posX, posY, state, self.ammoTypeToGet)
 
-        print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}, current angle is {angle}")
+        # print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}, current angle is {angle}")
         if(count == 0):
             self.deactivateAction()
             # DO SOME PUNISHMENT!
@@ -406,12 +408,13 @@ class GoToAmmo(RealActions):
         return chosenAction, 0
     
 class GoToArmor(RealActions):
-    def activateAction(self, state):
+    def activateAction(self, state, tick):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         self.prevArmor = armor
         self.maxArmor = 200
+        self.startTick = tick
         super().activateAction(state)
-    def updateTickAndReturnAction(self,state):
+    def updateTickAndReturnAction(self,state, tick):
         global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
@@ -429,7 +432,7 @@ class GoToArmor(RealActions):
 
         count, targetX, targetY = getClosestObjPosition(posX, posY, state, "armor")
 
-        print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}, current angle is {angle}")
+        # print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}, current angle is {angle}")
 
         if(count == 0):
             self.deactivateAction()
@@ -447,11 +450,12 @@ class GoToArmor(RealActions):
         return chosenAction, 0
     
 class MoveRandom(RealActions):
-    def activateAction(self, state):
+    def activateAction(self, state, tick):
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         self.targetPoint = (random.random() * (xBounds[1] - xBounds[0]) + xBounds[0], random.random() * (yBounds[1] - yBounds[0]) + yBounds[0])
+        self.startTick = tick
         super().activateAction(state)
-    def updateTickAndReturnAction(self, state):
+    def updateTickAndReturnAction(self, state, tick):
         global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
@@ -459,7 +463,11 @@ class MoveRandom(RealActions):
             self.deactivateAction()
             return previousAction, 0
         
-        print(f"current position is {posX}, {posY}, taret position is {self.targetPoint[0], self.targetPoint[1]}, current angle is {angle}")
+        if(tick - self.startTick > ticksFor5Seconds):
+            self.deactivateAction()
+            return previousAction, 0
+        
+        # # print(f"current position is {posX}, {posY}, taret position is {self.targetPoint[0], self.targetPoint[1]}, current angle is {angle}")
 
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, self.targetPoint[0], self.targetPoint[1], 0)
 
@@ -497,10 +505,12 @@ def findBestRunwaySpot(state):
     return bestTarget
 
 class RunAway(RealActions):
-    def activateAction(self, state):
+    def activateAction(self, state, tick):
         self.target = findBestRunwaySpot(state)
+        self.startTick = tick
+
         super().activateAction(state)
-    def updateTickAndReturnAction(self, state):
+    def updateTickAndReturnAction(self, state, tick):
         global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
 
@@ -513,7 +523,12 @@ class RunAway(RealActions):
             self.deactivateAction()
             return previousAction, 0
         
-        print(f"current position is {posX}, {posY}, taret position is {self.target[0], self.target[1]}, current angle is {angle}")
+        if(tick - self.startTick > ticksFor5Seconds):
+            self.deactivateAction()
+            return previousAction, 0
+
+        
+        # print(f"current position is {posX}, {posY}, taret position is {self.target[0], self.target[1]}, current angle is {angle}")
 
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, self.target[0], self.target[1], 0)
 
@@ -521,9 +536,10 @@ class RunAway(RealActions):
         return chosenAction, 0
 
 class ChargeIn(RealActions):
-    def activateAction(self, state):
+    def activateAction(self, state, tick):
+        self.startTick = tick
         super().activateAction(state)
-    def updateTickAndReturnAction(self, state):
+    def updateTickAndReturnAction(self, state, tick):
         global previousHealth, lastTickHurtCalled, previousAction
         health, armor, posX, posY, angle, kills, currentWeapon, firstWepAmmo, secondWepAmmo = state.game_variables
         hasEnemies, targetX, targetY = computeEnemyCentroid(state)
@@ -537,7 +553,11 @@ class ChargeIn(RealActions):
             self.deactivateAction()
             return previousAction, 0
         
-        print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}, current angle is {angle}")
+        if(tick - self.startTick > ticksFor5Seconds):
+            self.deactivateAction()
+            return previousAction, 0
+        
+        # print(f"current position is {posX}, {posY}, taret position is {targetX, targetY}, current angle is {angle}")
 
         chosenAction, _ = self.findMovementToMoveRelativeToObject(posX, posY, angle, targetX, targetY, 0)
 
