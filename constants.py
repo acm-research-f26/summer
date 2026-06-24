@@ -1,4 +1,4 @@
-numberGenerations = 5 
+numberGenerations = 5
 maxDepth = 6 
 treesPerGeneration = 40
 episodesPerTree = 4
