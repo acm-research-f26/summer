@@ -3,10 +3,10 @@ import copy
 import random
 import os
 import bisect
-from constants import depthProbabilityMultiplier
+from FirstImplementation.constants import depthProbabilityMultiplier
 import vizdoom as vzd
 from enum import Enum, auto
-import gameLogic
+import FirstImplementation.gameLogic as gameLogic
 def resetGame(showGame):
     game = vzd.DoomGame()
     config = {
