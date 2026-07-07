@@ -1,8 +1,7 @@
 """
-main.py  —  SleepGuard pipeline entry point
+main.py  —  SleepGuard v2
 Usage:
-    python main.py                        # runs on synthetic data
-    python main.py --data path/to/real/   # runs on real OhioT1DM data
+    python main.py --data "C:\Coding Assignments\OhioT1DM\OhioT1DM\2018"
 """
 
 import os
@@ -11,112 +10,96 @@ import argparse
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from data_loader         import load_all_patients
+from data_loader        import load_all_patients
 from feature_engineering import build_feature_matrix
-from model               import run_models
-from visualize           import generate_all
+from model              import run_models
+from visualize          import generate_all
 
 
-def print_full_results(sum_a, sum_b, detail_a, detail_b, imp_b):
-    W = 60
-
-    # ── Overall comparison ────────────────────────────────────────
+def print_results(summary, detail):
+    W = 58
     print("\n" + "="*W)
-    print("  OVERALL RESULTS (Leave-One-Patient-Out CV)")
+    print("  SLEEPGUARD v2 — REAL OhioT1DM 2018 RESULTS")
+    print("  Glucose-Only Pre-Sleep Feature Model")
     print("="*W)
-    print(f"  {'Metric':<22} {'Baseline':>12} {'Baseline+HRV':>14}")
-    print("-"*W)
-    print(f"  {'AUROC (mean±std)':<22} "
-          f"{sum_a['auroc_mean']:.3f}±{sum_a['auroc_std']:.3f}   "
-          f"  {sum_b['auroc_mean']:.3f}±{sum_b['auroc_std']:.3f}")
-    print(f"  {'F1 (mean±std)':<22} "
-          f"{sum_a['f1_mean']:.3f}±{sum_a['f1_std']:.3f}   "
-          f"  {sum_b['f1_mean']:.3f}±{sum_b['f1_std']:.3f}")
-    print(f"  {'Recall (mean)':<22} "
-          f"{sum_a['recall_mean']:.3f}         "
-          f"  {sum_b['recall_mean']:.3f}")
-    print(f"  {'Precision (mean)':<22} "
-          f"{sum_a['prec_mean']:.3f}         "
-          f"  {sum_b['prec_mean']:.3f}")
-    print("="*W)
-    delta = sum_b["auroc_mean"] - sum_a["auroc_mean"]
-    print(f"\n  HRV contribution to AUROC: {delta:+.3f}")
-    if delta > 0:
-        print("  >> HRV features IMPROVED prediction over baseline.")
-    elif delta < 0:
-        print("  >> HRV features HURT prediction vs baseline.")
-    else:
-        print("  >> HRV features had NO effect.")
-
-    # ── Per-patient breakdown ─────────────────────────────────────
-    print("\n" + "="*W)
-    print("  PER-PATIENT AUROC")
-    print("="*W)
-    print(f"  {'Patient':<12} {'Baseline':>10} {'Base+HRV':>10} {'Delta':>8} {'Hypo nights':>12}")
+    print(f"  {'AUROC (mean±std)':<28} "
+          f"{summary['auroc_mean']:.3f} ± {summary['auroc_std']:.3f}")
+    print(f"  {'F1 (mean±std)':<28} "
+          f"{summary['f1_mean']:.3f} ± {summary['f1_std']:.3f}")
+    print(f"  {'Recall (mean)':<28} {summary['recall_mean']:.3f}")
+    print(f"  {'Precision (mean)':<28} {summary['prec_mean']:.3f}")
     print("-"*W)
 
-    import pandas as pd
-    merged = detail_a[["patient","auroc","n_hypo"]].merge(
-        detail_b[["patient","auroc"]], on="patient", suffixes=("_base","_hrv")
-    )
-    for _, row in merged.iterrows():
-        d = row["auroc_hrv"] - row["auroc_base"]
-        flag = "▲" if d > 0.01 else ("▼" if d < -0.01 else "~")
-        print(f"  {int(row['patient']):<12} "
-              f"{row['auroc_base']:>10.3f} "
-              f"{row['auroc_hrv']:>10.3f} "
-              f"{d:>+8.3f} {flag}"
-              f"  {int(row['n_hypo']):>8} nights")
-
-    # ── Feature importances ───────────────────────────────────────
-    print("\n" + "="*W)
-    print("  TOP 10 FEATURE IMPORTANCES (Model B — Baseline+HRV)")
+    pval = summary["wilcoxon_pval"]
+    stat = summary["wilcoxon_stat"]
+    sig  = "YES (p < 0.05)" if (not __import__('math').isnan(pval) and pval < 0.05) else \
+           "NO"             if not __import__('math').isnan(pval) else "N/A (too few folds)"
+    print(f"  Wilcoxon vs chance (0.5):")
+    print(f"    statistic = {stat:.3f}   p-value = {pval:.4f}")
+    print(f"    Significant? {sig}")
     print("="*W)
-    for i, (feat, val) in enumerate(imp_b.head(10).items(), 1):
-        tag = " [HRV]" if feat.startswith("hrv") or feat.startswith("hr_") else ""
-        bar = "█" * int(val * 200)
-        print(f"  {i:>2}. {feat:<20}{tag:<7} {val:.4f}  {bar}")
 
     print("\n" + "="*W)
+    print("  PER-PATIENT BREAKDOWN")
+    print("="*W)
+    print(f"  {'Patient':<10} {'AUROC':>8} {'F1':>7} {'Recall':>8} {'Hypo nights':>12}")
+    print("-"*W)
+    for _, row in detail.iterrows():
+        beat = "▲" if row["auroc"] > 0.6 else ("~" if row["auroc"] > 0.5 else "▼")
+        print(f"  {int(row['patient']):<10} "
+              f"{row['auroc']:>8.3f} "
+              f"{row['f1']:>7.3f} "
+              f"{row['recall']:>8.3f} "
+              f"{int(row['n_hypo']):>8} nights  {beat}")
+    print("="*W)
+
+
+def print_importances(imp):
+    W = 58
+    print("\n" + "="*W)
+    print("  TOP FEATURE IMPORTANCES")
+    print("="*W)
+    for i, (feat, val) in enumerate(imp.items(), 1):
+        bar = "█" * int(val * 300)
+        print(f"  {i:>2}. {feat:<18} {val:.4f}  {bar}")
+    print("="*W)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="SleepGuard pipeline")
-    parser.add_argument("--data", type=str, default=None,
-                        help="Path to data directory. Defaults to synthetic data.")
+    parser = argparse.ArgumentParser(description="SleepGuard v2")
+    parser.add_argument("--data", type=str, required=True,
+                        help="Path to OhioT1DM 2018 folder (contains train/ subdir)")
     args = parser.parse_args()
 
-    if args.data:
-        data_dir = args.data
-        print(f"Using real data from: {data_dir}")
-    else:
-        data_dir = os.path.join(os.path.dirname(__file__), "..", "data", "synthetic")
-        print("No --data path provided. Using synthetic data.")
-        train_dir = os.path.join(data_dir, "train")
-        if not os.path.isdir(train_dir) or len(os.listdir(train_dir)) == 0:
-            print("Generating synthetic data...")
-            from generate_synthetic_data import main as gen
-            gen()
+    print(f"\nData path: {args.data}")
 
-    print("\n── Loading patient data ──")
-    patients = load_all_patients(data_dir)
+    print("\n── Loading patients ──")
+    patients = load_all_patients(args.data)
+    if not patients:
+        print("ERROR: No patient data loaded. Check your --data path.")
+        sys.exit(1)
 
     print("\n── Extracting features ──")
-    X_baseline, X_hrv, y, meta = build_feature_matrix(patients)
+    X, y, meta = build_feature_matrix(patients)
+    if len(X) == 0:
+        print("ERROR: No nights passed quality filter. Check data.")
+        sys.exit(1)
 
-    print("\n── Training & evaluating models ──")
-    sum_a, sum_b, detail_a, detail_b, imp_b = run_models(X_baseline, X_hrv, y, meta)
+    print("\n── Training model ──")
+    summary, detail, roc_data, imp = run_models(X, y, meta)
 
-    print_full_results(sum_a, sum_b, detail_a, detail_b, imp_b)
+    print_results(summary, detail)
+    print_importances(imp)
 
-    # Save PNGs — always overwrites same files, no duplicates
     results_dir = os.path.join(os.path.dirname(__file__), "results")
     os.makedirs(results_dir, exist_ok=True)
-    detail_a.to_csv(os.path.join(results_dir, "per_patient_baseline.csv"), index=False)
-    detail_b.to_csv(os.path.join(results_dir, "per_patient_hrv.csv"),      index=False)
-    imp_b.to_csv(   os.path.join(results_dir, "feature_importances.csv"))
-    generate_all(sum_a, sum_b, detail_a, detail_b, imp_b)
-    print(f"\nPNGs saved/overwritten in: {os.path.abspath(results_dir)}")
+    detail.to_csv(os.path.join(results_dir, "per_patient_results.csv"), index=False)
+    imp.to_csv(   os.path.join(results_dir, "feature_importances.csv"))
+
+    generate_all(summary, detail, roc_data, imp)
+
+    print(f"\nResults saved to: {os.path.abspath(results_dir)}")
+    print("Pipeline complete.")
 
 
 if __name__ == "__main__":

@@ -1,98 +1,121 @@
-# SleepGuard Predicting Nocturnal Hypoglycemia in Type 1 Diabetes Using Pre-Sleep HRV Features
+# SleepGuard — Pre-Sleep HRV Features for Nocturnal Hypoglycemia Prediction
 
-## 📌 Project Summary
-SleepGuard is a research pipeline that investigates whether heart rate
-variability (HRV) features extracted from a pre-sleep window can predict
-nocturnal hypoglycemia in patients with Type 1 Diabetes. Using the
-OhioT1DM 2018 dataset, the project builds two classifiers — one using
-only glucose, insulin, and meal data, and one that adds pre-sleep HRV
-features — to test whether autonomic nervous system signals measured
-before sleep onset carry predictive information about a hypoglycemic
-event that won't occur for hours.
+Research project investigating whether heart rate variability (HRV) features
+extracted from a pre-sleep window can improve prediction of nocturnal
+hypoglycemia in Type 1 Diabetes, beyond a baseline using glucose, insulin,
+and meal data alone.
 
-## 🎯 Motivation
-Nocturnal hypoglycemia is one of the most dangerous complications of
-Type 1 Diabetes because it occurs while patients are asleep and unable
-to respond to early symptoms. Most existing wearable-sensor research
-focuses on detecting hypoglycemia while it is already happening, using
-real-time heart rate or skin response signals. This leaves a gap almost
-no work asks whether signals available before sleep can predict whether
-a nocturnal low will happen at all, which would give patients and
-caregivers actionable warning time rather than a real-time alert during
-an event already in progress.
+## Research Question
 
-## 🧩 Novelty
+Most existing work on hypoglycemia and wearable signals focuses on
+**detection** — identifying a low blood glucose event while it is happening,
+using real-time heart rate or galvanic skin response. This project asks a
+different question:
 
- Pre-sleep prediction window, not real-time detection Frames the
-  problem as predicting a nocturnal hypoglycemic event hours in advance
-  from a pre-sleep feature window, rather than detecting an event as it
-  is occurring.
- HRV features on OhioT1DM No existing study has extracted and
-  evaluated HRV-derived features from the OhioT1DM dataset for
-  nocturnal hypoglycemia prediction, despite a 2024 paper explicitly
-  identifying the HRV–hypoglycemia relationship as open future work.
- Pseudo-HRV from aggregated wearable data Demonstrates a method for
-  deriving RMSSD, SDNN, and pNN50 from 5-minute aggregated heart rate
-  (Basis Peak band), rather than requiring raw RR-interval data that
-  most consumer wearables don't expose.
+> Can HRV features measured **before sleep onset** predict whether a
+> nocturnal hypoglycemic event will occur at all, hours later?
 
-## 🧠 Methodology
+This is a prediction problem from a pre-event window rather than a
+real-time detection problem. The motivation is grounded in autonomic
+nervous system physiology: counter-regulatory hormone responses tied to
+glucose dysregulation are known to affect HRV, but no existing study has
+extracted and evaluated HRV features specifically from the OhioT1DM dataset
+for this purpose. This gap was explicitly identified as future work in
+prior nocturnal hypoglycemia research.
 
-1. Dataset Uses the [OhioT1DM 2018 Dataset](httpsmarthealth.cs.ohio.eduOhioT1DM-dataset.html)
-   — 6 Type 1 Diabetes patients with continuous glucose monitoring,
-   insulin (basal + bolus), meal logs, and Basis Peak heart rate data
-   at 5-minute resolution. ~250+ patient-nights total.
-2. Architecture Random Forest classifier (scikit-learn), trained in
-   two configurations for direct comparison
-    Model A (Baseline) glucose meanstdlastslope, total bolus
-     insulin, mean basal rate, total carbs — all from the 2-hour
-     pre-sleep window.
-    Model B (Baseline + HRV) all baseline features plus RMSSD,
-     SDNN, pNN50, mean HR, and HR std derived from pre-sleep heart rate.
-3. Evaluation
-    Leave-One-Patient-Out cross-validation (train on 5 patients, test
-     on the held-out patient, rotate through all 6).
-    Class-balanced training to account for the imbalance between
-     hypoglycemic and normal nights (~15-25% positive class).
-4. Metrics
-    AUROC, F1 score, precision, recall — reported as mean ± std across
-     the leave-one-patient-out folds, plus a per-patient breakdown and
-     Random Forest feature importances.
+## Dataset
 
-Additional Methodology
+**OhioT1DM 2018 cohort** — 6 patients (IDs: 540, 544, 552, 567, 584, 596)
+with continuous glucose monitoring, insulin (basal + bolus), meal logs, and
+heart rate from a Basis Peak fitness band recorded at 5-minute intervals.
 
- Synthetic data validation A synthetic data generator was built to
-  mirror the exact OhioT1DM XML schema, allowing the full pipeline to be
-  built, tested, and validated end-to-end while real dataset access was
-  pending approval.
+The 2018 cohort is the only one with heart rate data — the 2020 cohort used
+a different sensor (Empatica Embrace) without an equivalent HR stream.
 
-## 🌍 Impact
-If pre-sleep HRV features prove predictive, this work points toward a
-low-cost, non-invasive early-warning approach for nocturnal hypoglycemia
-that could be built into consumer wearables patients already own,
-without requiring real-time CGM alerts during sleep. More broadly, it
-contributes evidence on a question explicitly flagged as open in prior
-literature, and provides a reusable pipeline for testing pre-event
-physiological signals against more conventional CGMinsulin baselines.
+Access requires a request to the dataset maintainers (Ohio State University /
+Dr. Razvan Bunescu). This repository ships with a **synthetic data
+generator** that mirrors the exact XML schema of the real dataset, so the
+full pipeline can be built, tested, and demonstrated before real data
+access is granted.
 
-## Future Work
+## Method
 
- Validate on real OhioT1DM data Current results are on a synthetic
-  dataset built to validate the pipeline; real dataset access is pending
-  approval from Ohio State University.
- Statistical significance testing Add a Wilcoxon signed-rank test
-  or permutation test across patient folds to confirm whether the
-  baseline vs. HRV performance difference is significant, not noise.
- Cross-dataset replication Validate findings on an independent
-  cohort such as D1NAMO, which includes higher-resolution chest-strap
-  heart rate data, to test generalizability beyond the Basis Peak sensor.
- Personalized modeling Per-patient results showed HRV helped some
-  patients and not others — worth investigating whether patient-specific
-  models outperform a pooled model.
+For each patient-night:
 
-## Additional Sources
+1. **Label** — night is marked hypoglycemic if any glucose reading falls
+   below 70 mg/dL between 11:00 PM and 7:00 AM.
+2. **Baseline features** — extracted from the 2-hour pre-sleep window
+   (9:00–11:00 PM): glucose mean/std/last/slope, total bolus insulin,
+   mean basal rate, total carbs.
+3. **HRV features** — extracted from the same pre-sleep window using the
+   5-minute heart rate stream converted to pseudo-RR intervals
+   (`RR_ms = 60000 / HR_bpm`): RMSSD, SDNN, pNN50, mean HR, HR std.
+4. **Models** — two Random Forest classifiers trained with
+   Leave-One-Patient-Out cross-validation:
+   - **Model A**: baseline features only
+   - **Model B**: baseline + HRV features
+5. **Evaluation** — AUROC, F1, precision, recall, per-patient breakdown,
+   and feature importances.
 
- Cichosz, S.L. et al. (2014) — real-time hypoglycemia detection using HRV.
- 2024 nocturnal hypoglycemia prediction paper (children) identifying
-  HRV as future work.
- [OhioT1DM Dataset Description Paper (PMC)](httpspmc.ncbi.nlm.nih.govarticlesPMC7881904)
+## Project Structure
+
+```
+sleepguard/
+├── src/
+│   ├── generate_synthetic_data.py   # builds synthetic OhioT1DM-format XML
+│   ├── data_loader.py               # parses XML into DataFrames
+│   ├── feature_engineering.py       # labeling + feature extraction
+│   ├── model.py                     # LOPO-CV training & evaluation
+│   ├── visualize.py                 # generates result PNGs
+│   └── main.py                      # pipeline entry point
+├── data/
+│   └── synthetic/                   # auto-generated synthetic dataset
+├── results/                         # output metrics, CSVs, PNGs
+├── requirements.txt
+└── README.md
+```
+
+## Setup
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+Run on synthetic data (auto-generated on first run):
+
+```bash
+cd src
+python main.py
+```
+
+Run on real OhioT1DM data once access is granted:
+
+```bash
+python main.py --data /path/to/OhioT1DM/2018/train
+```
+
+All metrics print directly to the terminal. Result CSVs and PNGs are saved
+to `results/` and overwritten on every run.
+
+## Current Status
+
+First implementation complete and validated end-to-end on synthetic data.
+Real dataset access requested from Ohio State (pending approval). Once
+real data is available, results will be regenerated and reported with
+statistical significance testing across the leave-one-patient-out folds.
+
+## Known Limitations
+
+- **Small sample size**: 6 patients, ~250 patient-nights total. Results are
+  a pilot study, not a generalizable claim.
+- **HRV is derived, not measured directly**: the Basis Peak band records
+  5-minute aggregated heart rate, not raw RR intervals. HRV features are
+  computed from pseudo-RR intervals derived from this aggregated signal,
+  consistent with prior literature working with the same constraint.
+- **No statistical significance testing yet** on the baseline vs. HRV
+  model comparison — planned for the next iteration.
+- **Synthetic data results are illustrative only** and do not represent a
+  real biological finding; they exist to validate that the pipeline runs
+  correctly end-to-end.
