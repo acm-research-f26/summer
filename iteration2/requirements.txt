@@ -1,0 +1,9 @@
+# Colab already ships torch/torchvision matched to its CUDA; do not pin here.
+transformers>=4.45
+accelerate
+bitsandbytes
+qwen-vl-utils
+easyocr
+scikit-learn
+pandas
+pytest

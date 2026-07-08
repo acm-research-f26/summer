@@ -1,0 +1,12 @@
+AidUI/
+
+data/cache/
+
+data/own_screenshots/*.png
+data/own_screenshots/*.jpg
+data/own_screenshots/*.jpeg
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
