@@ -10,6 +10,7 @@ google-cloud-aiplatform>=1.49.0
 geemap>=0.32.0
 jupyter>=1.0.0
 matplotlib>=3.8.0
+plotly>=5.22.0
 pillow>=10.0.0
 ruff>=0.4.0
 ty>=0.0.1a1
