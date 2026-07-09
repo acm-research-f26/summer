@@ -4,6 +4,7 @@ logs/
 .vscode/
 .ruff_cache/
 .DS_Store
+pyproject.toml
 
 # Ignore all __pycache__ directories anywhere in the repo
 __pycache__/
@@ -20,3 +21,4 @@ artifacts/20260622-020230/*
 !artifacts/20260622-020230/loss_curve.png
 
 docs/
+/catboost_info/
