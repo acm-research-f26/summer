@@ -4,25 +4,18 @@ from skill_queue import SkillQueue
 
 
 @dataclass
-class SkillDef:
-    name: str
-    roll_lo: int
-    roll_hi: int
-    base_damage: int
-    description: str = ""  # full effect text, including not-yet-implemented status effects
-    effect: object = None  # optional callable(battle, source, target, log); None -> flat damage only
-
-
-@dataclass
-class PlayerUnit:
+class Combatant:
+    """
+    Shared state between PlayerUnit and Boss: HP, stagger, and all status
+    effects (tremor, burn, dark flame, magic bullets). PlayerUnit and Boss
+    each just add what's specific to them (skills, and for PlayerUnit, its
+    own skill queue).
+    """
     name: str
     max_hp: int
-    skill1: SkillDef
-    skill2: SkillDef
     passive_description: str = ""
     stagger_thresholds: list = field(default_factory=list)  # absolute HP values, e.g. [110, 70, 30]
     hp: int = field(init=False)
-    queue: SkillQueue = field(init=False)
     is_staggered: bool = field(init=False, default=False)
     stagger_turns_left: int = field(init=False, default=0)
     passed_thresholds: set = field(init=False, default_factory=set)
@@ -40,18 +33,35 @@ class PlayerUnit:
     def __post_init__(self):
         self.hp = self.max_hp
 
-    def init_queue(self, rng):
-        self.queue = SkillQueue(rng)
-
-    def get_skill_def(self, skill_type):
-        return self.skill1 if skill_type == 'skill1' else self.skill2
-
     def is_alive(self):
         return self.hp > 0
 
     def active_stagger_thresholds(self):
         """Thresholds not yet passed (still meaningful to show on the HP bar)."""
         return [t for t in self.stagger_thresholds if t not in self.passed_thresholds]
+
+
+@dataclass
+class SkillDef:
+    name: str
+    roll_lo: int
+    roll_hi: int
+    base_damage: int
+    description: str = ""  # full effect text, including not-yet-implemented status effects
+    effect: object = None  # optional callable(battle, source, target, log); None -> flat damage only
+
+
+@dataclass
+class PlayerUnit(Combatant):
+    skill1: SkillDef = None
+    skill2: SkillDef = None
+    queue: SkillQueue = field(init=False, default=None)
+
+    def init_queue(self, rng):
+        self.queue = SkillQueue(rng)
+
+    def get_skill_def(self, skill_type):
+        return self.skill1 if skill_type == 'skill1' else self.skill2
 
 
 @dataclass
@@ -66,35 +76,8 @@ class BossSkillDef:
 
 
 @dataclass
-class Boss:
-    name: str
-    max_hp: int
-    skills: list  # list of 5 BossSkillDef
-    passive_description: str = ""
-    stagger_thresholds: list = field(default_factory=list)
-    hp: int = field(init=False)
-    is_staggered: bool = field(init=False, default=False)
-    stagger_turns_left: int = field(init=False, default=0)
-    passed_thresholds: set = field(init=False, default_factory=set)
-    tremor_potency: int = 0
-    tremor_count: int = 0
-    tremor_type: str = "normal"
-    tremor_scorch_expire_turn: object = None
-    burn_potency: int = 0
-    burn_count: int = 0
-    burn_nonlethal: bool = False
-    dark_flame_count: int = 0
-    magic_bullets: int = 0
-    max_magic_bullets: int = 0
-
-    def __post_init__(self):
-        self.hp = self.max_hp
-
-    def is_alive(self):
-        return self.hp > 0
-
-    def active_stagger_thresholds(self):
-        return [t for t in self.stagger_thresholds if t not in self.passed_thresholds]
+class Boss(Combatant):
+    skills: list = None  # list of 5 BossSkillDef
 
 
 class PlannedBossSkill:
@@ -102,7 +85,6 @@ class PlannedBossSkill:
     def __init__(self, skill_def, target_names):
         self.skill_def = skill_def
         self.target_names = target_names  # list of unit names (usually 1, or all for hits_all)
-        self.clashed_by = None  # will hold (unit_name, skill_type) if a player clashes it
         self.discarded = False
 
     def __repr__(self):
@@ -124,6 +106,31 @@ class PlayerAction:
     def __repr__(self):
         mode = f"clash->slot{self.clash_slot_index}" if self.clash_slot_index is not None else "unopposed"
         return f"<PlayerAction {self.unit_name}:{self.skill_type} {mode}>"
+
+
+class TurnStep:
+    """
+    One atomic, animatable piece of a turn's resolution: a single boss slot
+    (whether clashed or unopposed), a single unopposed player action, or the
+    end-of-turn status effect processing. A UI can iterate these one at a
+    time (via Battle.resolve_turn_steps) to animate a turn instead of
+    resolving it all at once.
+    """
+    def __init__(self, kind, participants, log_lines=None, slot_index=None,
+                 boss_roll=None, player_roll=None, boss_skill_name=None,
+                 player_skill_name=None, winner=None):
+        self.kind = kind  # 'clash' | 'boss_unopposed' | 'player_unopposed' | 'turn_end'
+        self.participants = participants  # entity names involved, for UI highlighting
+        self.log_lines = log_lines or []
+        self.slot_index = slot_index  # which boss slot (0-2), if applicable
+        self.boss_roll = boss_roll
+        self.player_roll = player_roll
+        self.boss_skill_name = boss_skill_name
+        self.player_skill_name = player_skill_name
+        self.winner = winner  # 'boss' | 'player', only set for 'clash'
+
+    def __repr__(self):
+        return f"<TurnStep {self.kind} participants={self.participants}>"
 
 
 class BattleLog:
@@ -175,9 +182,28 @@ class Battle:
                          this turn (should be exactly one skill per unit, since the bottom
                          2 available slots always offer exactly one action to pick per unit
                          per turn).
-        Returns a BattleLog.
+        Returns a BattleLog with the whole turn resolved at once. For a step-by-step
+        (animatable) version, use resolve_turn_steps instead — both share the same
+        underlying resolution logic.
         """
         log = BattleLog()
+        for _step in self._resolve_turn_impl(boss_slots, player_actions, log):
+            pass  # steps already write into `log` as they go; just drain the generator
+        return log
+
+    def resolve_turn_steps(self, boss_slots, player_actions):
+        """
+        Generator version of resolve_turn: yields a TurnStep after each atomic
+        action (one boss slot's resolution, one unopposed player action, or the
+        end-of-turn status processing), with all state changes for that step
+        already applied by the time it's yielded. A UI can pace itself between
+        yields (e.g. wait ~1s) to animate the turn instead of resolving it all
+        at once.
+        """
+        log = BattleLog()
+        yield from self._resolve_turn_impl(boss_slots, player_actions, log)
+
+    def _resolve_turn_impl(self, boss_slots, player_actions, log):
         self.turn_number += 1
         log.add(f"=== Turn {self.turn_number} ===")
 
@@ -190,10 +216,27 @@ class Battle:
         # Step 1: boss skills, leftmost first
         for i, slot in enumerate(boss_slots):
             clashing_action = clash_map.get(i)
+            start_idx = len(log.lines)
             if clashing_action is not None:
-                self._resolve_clash(slot, clashing_action, log)
+                boss_roll, player_roll, winner, boss_skill_name, player_skill_name = \
+                    self._resolve_clash(slot, clashing_action, log)
+                yield TurnStep(
+                    kind="clash",
+                    participants=[self.boss.name, clashing_action.unit_name],
+                    log_lines=log.lines[start_idx:],
+                    slot_index=i,
+                    boss_roll=boss_roll, player_roll=player_roll, winner=winner,
+                    boss_skill_name=boss_skill_name, player_skill_name=player_skill_name,
+                )
             else:
                 self._execute_boss_skill(slot, log)
+                yield TurnStep(
+                    kind="boss_unopposed",
+                    participants=[self.boss.name] + list(slot.target_names),
+                    log_lines=log.lines[start_idx:],
+                    slot_index=i,
+                    boss_skill_name=slot.skill_def.name,
+                )
 
         # Step 2: remaining (unopposed) player actions, in deployment order
         # (deployment order = the order units were passed into Battle(), i.e. dict insertion order)
@@ -201,14 +244,24 @@ class Battle:
             if action.discarded:
                 continue
             if action.clash_slot_index is not None:
-                # already resolved during clash step (whether it won or lost)
                 continue
-            self._execute_player_skill(action, log, target_name=self.boss.name)
+            start_idx = len(log.lines)
+            self._execute_player_skill(action, log)
+            yield TurnStep(
+                kind="player_unopposed",
+                participants=[action.unit_name, self.boss.name],
+                log_lines=log.lines[start_idx:],
+                player_skill_name=action.skill_type,
+            )
 
+        start_idx = len(log.lines)
         self._process_status_effects_turn_end(log)
         self._process_stagger_turn_end(log)
-
-        return log
+        yield TurnStep(
+            kind="turn_end",
+            participants=[],
+            log_lines=log.lines[start_idx:],
+        )
 
     def _apply_damage(self, target, base_amount, log, floor_at_1=False):
         """
@@ -379,10 +432,14 @@ class Battle:
                     log.add(f"  {boss_def.name} redirects onto {unit.name} (the clasher).")
                 boss_slot.target_names = [unit.name]
             self._execute_boss_skill(boss_slot, log)
+            winner = "boss"
         else:
             log.add(f"  {unit.name} wins clash. {boss_def.name} is discarded.")
             boss_slot.discarded = True
-            self._execute_player_skill(player_action, log, target_name=self.boss.name)
+            self._execute_player_skill(player_action, log)
+            winner = "player"
+
+        return boss_roll, player_roll, winner, boss_def.name, player_def.name
 
     def _execute_boss_skill(self, slot, log):
         if slot.discarded:
@@ -404,7 +461,7 @@ class Battle:
                     f"{dmg} damage (hp now {target.hp})"
                 )
 
-    def _execute_player_skill(self, action, log, target_name):
+    def _execute_player_skill(self, action, log):
         if action.discarded:
             return
         unit = self.get_unit(action.unit_name)

@@ -90,7 +90,7 @@ def test_staggered_unit_skill_is_skipped_and_saved():
 
     action = PlayerAction(unit.name, unit.queue.available[0], clash_slot_index=None, armed_position=0)
     boss_slots = [PlannedBossSkill(boss.skills[2], [unit.name])]  # AoE slot, arbitrary filler, unopposed
-    log = battle.resolve_turn(boss_slots, [action])
+    battle.resolve_turn(boss_slots, [action])
 
     assert unit.hp == unit_hp_before - 15  # AoE base 10 dmg x1.5 (unit already staggered) = 15
     assert boss.hp == boss_hp_before, "boss hp should be untouched since the staggered unit's skill never executed"
@@ -118,8 +118,8 @@ def test_stagger_duration_two_turns_then_clears():
     # is_staggered True through all of that next turn's resolution, then clearing it at ITS turn-end.
     do_turn()
     assert unit.is_staggered, "should still be staggered after turn 1 (duration covers all of turn 2 too)"
-    boss_hp_before_turn1_action = boss.hp  # unit's action this turn should have been skipped too,
-    # since stagger triggered mid-turn-1 from the boss's OWN hits landing before the unit's turn.
+    # (unit's action this turn would also have been skipped, since stagger triggered
+    # mid-turn-1 from the boss's own hits landing before the unit's turn)
 
     # Turn 2: unit is staggered for the unit's ENTIRE turn 2 resolution (skill skipped/saved,
     # no damage dealt to boss), and by the end of resolve_turn's internal turn-end processing,

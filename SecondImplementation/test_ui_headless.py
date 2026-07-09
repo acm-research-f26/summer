@@ -6,6 +6,17 @@ import random
 from game_ui import GameUI
 
 
+def drain_turn(game):
+    """
+    Test helper: starts the turn (which now animates step-by-step instead of
+    resolving instantly) and force-advances through every step immediately,
+    bypassing the real ~1s wall-clock delay between steps.
+    """
+    game._start_turn()
+    while game.phase == "resolving":
+        game._advance_step()
+
+
 def test_basic_flow():
     game = GameUI()
     game.draw()
@@ -20,10 +31,11 @@ def test_basic_flow():
     assert game._all_actions_ready()
     boss_hp_before = game.boss.hp
     turn_before = game.battle.turn_number
-    game._start_turn()
+    drain_turn(game)
     assert game.battle.turn_number == turn_before + 1
     assert game.boss.hp <= boss_hp_before
     assert game.player_actions == {}
+    assert game.phase == "planning"
     game.draw()
     print("test_basic_flow passed. boss hp:", game.boss.hp)
 
@@ -159,6 +171,8 @@ def test_retarget_to_clasher_on_boss_win():
     game.battle._roll = rigged_roll
 
     game._start_turn()
+    while game.phase == "resolving":
+        game._advance_step()
     game.battle._roll = original_roll
 
     took_damage_original = game.units[1].hp < hp_before_original_target
@@ -295,6 +309,120 @@ def test_scorch_vs_normal_tremor_tooltip_differ():
     print("test_scorch_vs_normal_tremor_tooltip_differ passed.")
 
 
+def test_start_turn_enters_resolving_phase_not_instant():
+    game = GameUI()
+    for unit in game.units:
+        game._arm(unit.name, 0)
+        game._commit_action(clash_slot_index=None)
+    turn_before = game.battle.turn_number
+
+    game._start_turn()
+    assert game.phase == "resolving"
+    assert game.current_step is not None
+    # turn_number increments immediately inside resolve_turn_steps (happens
+    # before the first yield), even though the animation hasn't finished
+    assert game.battle.turn_number == turn_before + 1
+    print("test_start_turn_enters_resolving_phase_not_instant passed.")
+
+
+def test_clickables_frozen_while_resolving():
+    game = GameUI()
+    for unit in game.units:
+        game._arm(unit.name, 0)
+        game._commit_action(clash_slot_index=None)
+    game._start_turn()
+    game.draw()
+    assert game.clickables == [], "no clickables should be registered while resolving"
+    print("test_clickables_frozen_while_resolving passed.")
+
+
+def test_advance_step_moves_through_all_steps_and_returns_to_planning():
+    game = GameUI()
+    for unit in game.units:
+        game._arm(unit.name, 0)
+        game._commit_action(clash_slot_index=None)
+    game._start_turn()
+
+    steps_seen = 0
+    while game.phase == "resolving":
+        steps_seen += 1
+        game._advance_step()
+        if steps_seen > 20:
+            raise AssertionError("too many steps; likely stuck")
+
+    assert steps_seen >= 4  # at least 3 boss slots + turn_end (plus unopposed player actions)
+    assert game.phase == "planning"
+    assert game.current_step is None
+    assert game.resolving_step_iter is None
+    print(f"test_advance_step_moves_through_all_steps_and_returns_to_planning passed ({steps_seen} steps).")
+
+
+def test_highlighted_names_reflect_current_step():
+    game = GameUI()
+    for unit in game.units:
+        game._arm(unit.name, 0)
+        game._commit_action(clash_slot_index=None)
+    game._start_turn()
+
+    assert game.phase == "resolving"
+    assert len(game._highlighted_names()) > 0
+    first_step_participants = set(game.current_step.participants)
+    assert game._highlighted_names() == first_step_participants
+
+    game._advance_step()
+    if game.phase == "resolving":
+        assert game._highlighted_names() == set(game.current_step.participants)
+    print("test_highlighted_names_reflect_current_step passed.")
+
+
+def test_click_anywhere_advances_step_while_resolving():
+    game = GameUI()
+    for unit in game.units:
+        game._arm(unit.name, 0)
+        game._commit_action(clash_slot_index=None)
+    game._start_turn()
+    step_before = game.current_step
+
+    # a click anywhere on screen (not on any particular clickable) should
+    # advance the animation, since clickables are frozen while resolving
+    game.handle_click((5, 5))
+    assert game.current_step is not step_before or game.phase == "planning"
+    print("test_click_anywhere_advances_step_while_resolving passed.")
+
+
+def test_click_does_not_leak_through_to_normal_controls_while_resolving():
+    """A click during resolution should only ever advance the step, never
+    also register as e.g. arming a skill underneath it."""
+    game = GameUI()
+    for unit in game.units:
+        game._arm(unit.name, 0)
+        game._commit_action(clash_slot_index=None)
+    game._start_turn()
+    game.draw()
+
+    # even if we click exactly where a skill circle would normally be,
+    # nothing should be armed — clickables are empty during resolution
+    game.handle_click((800, 500))
+    assert game.armed is None
+    print("test_click_does_not_leak_through_to_normal_controls_while_resolving passed.")
+
+
+def test_banner_does_not_crash_for_each_step_kind():
+    """Smoke test: draw() shouldn't crash regardless of which step kind is current."""
+    game = GameUI()
+    for unit in game.units:
+        game._arm(unit.name, 0)
+        game._commit_action(clash_slot_index=None)
+    game._start_turn()
+    seen_kinds = set()
+    while game.phase == "resolving":
+        seen_kinds.add(game.current_step.kind)
+        game.draw()
+        game._advance_step()
+    assert "turn_end" in seen_kinds
+    print(f"test_banner_does_not_crash_for_each_step_kind passed. kinds seen: {seen_kinds}")
+
+
 if __name__ == "__main__":
     test_basic_flow()
     test_cancel_action()
@@ -311,4 +439,11 @@ if __name__ == "__main__":
     test_badge_hidden_when_count_zero_even_with_lingering_potency()
     test_badge_tooltips_present_when_active()
     test_scorch_vs_normal_tremor_tooltip_differ()
+    test_start_turn_enters_resolving_phase_not_instant()
+    test_clickables_frozen_while_resolving()
+    test_advance_step_moves_through_all_steps_and_returns_to_planning()
+    test_highlighted_names_reflect_current_step()
+    test_click_anywhere_advances_step_while_resolving()
+    test_click_does_not_leak_through_to_normal_controls_while_resolving()
+    test_banner_does_not_crash_for_each_step_kind()
     print("\nALL TESTS PASSED")

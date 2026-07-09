@@ -26,12 +26,18 @@ Controls:
     orange ring + "STAGGERED" label while staggered (takes 1.5x damage, can't
     act, for the rest of that turn plus the entire next turn). A staggered
     unit doesn't need an action to START TURN — it's automatically skipped.
+  - Once a turn starts, it plays out one atomic action at a time (each boss
+    slot, then each unopposed player action, then end-of-turn status effects),
+    with a white ring around whoever's involved and a banner describing what's
+    happening (rolls + winner, for a clash). Click anywhere to advance to the
+    next step; all normal controls are frozen until the turn finishes playing out.
 
 Run locally with:  python game_ui.py
 Requires: pygame  (pip install pygame)
 """
 
 import sys
+import os
 import random
 import pygame
 
@@ -50,6 +56,14 @@ from engine import (
 MANUAL_BOSS_MODE = False  # <-- the bool toggle. Can also be flipped in-app via checkbox.
 
 SCREEN_W, SCREEN_H = 1600, 720
+
+ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+SPRITE_FILES = {
+    "TremorScorch": "tremor_scorch.png",
+    "DarkFlameInflictor": "dark_flame_inflictor.png",
+    "BurnTremorInflictor": "self_status.png",
+    "Boss": "boss.png",
+}
 FPS = 60
 
 COLOR_BG = (30, 30, 35)
@@ -74,6 +88,7 @@ COLOR_TOOLTIP_BG = (20, 20, 24)
 COLOR_TOOLTIP_BORDER = (200, 200, 100)
 COLOR_STAGGER_TICK = (250, 210, 40)
 COLOR_STAGGERED_RING = (255, 160, 30)
+COLOR_STEP_HIGHLIGHT = (255, 255, 255)
 COLOR_STAGGERED_TEXT = (255, 170, 40)
 COLOR_TREMOR_NORMAL = (160, 130, 70)
 COLOR_TREMOR_SCORCH = (210, 40, 130)
@@ -225,6 +240,28 @@ def draw_text(surface, font, text, pos, color=COLOR_TEXT, center=False):
     return r
 
 
+def load_circular_sprite(path, diameter):
+    """
+    Loads an image, center-crops it to a square (so wide/tall source images
+    don't get squished), scales it to `diameter`, and masks it to a circle
+    so it drops cleanly into the existing round-portrait layout.
+    """
+    img = pygame.image.load(path).convert_alpha()
+    w, h = img.get_size()
+    side = min(w, h)
+    crop_rect = pygame.Rect((w - side) // 2, (h - side) // 2, side, side)
+    img = img.subsurface(crop_rect).copy()
+    img = pygame.transform.smoothscale(img, (diameter, diameter))
+
+    mask = pygame.Surface((diameter, diameter), pygame.SRCALPHA)
+    pygame.draw.circle(mask, (255, 255, 255, 255), (diameter // 2, diameter // 2), diameter // 2)
+
+    result = pygame.Surface((diameter, diameter), pygame.SRCALPHA)
+    result.blit(img, (0, 0))
+    result.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+    return result
+
+
 def draw_hp_bar(surface, x, y, w, h, hp, max_hp, fg_color, stagger_thresholds=None):
     hp_clamped = max(0, min(hp, max_hp))
     pygame.draw.rect(surface, COLOR_HP_BG, (x, y, w, h))
@@ -295,6 +332,19 @@ class GameUI:
 
         self.manual_boss_mode = MANUAL_BOSS_MODE
 
+        # Portrait sprites: keyed by entity name, pre-masked to circles at the
+        # exact diameter each portrait is drawn at (boss r=38, party r=34).
+        # Falls back to the plain colored-circle look if an image is missing.
+        self.sprites = {}
+        for name, filename in SPRITE_FILES.items():
+            path = os.path.join(ASSETS_DIR, filename)
+            diameter = (38 if name == "Boss" else 34) * 2
+            try:
+                self.sprites[name] = load_circular_sprite(path, diameter)
+            except (pygame.error, FileNotFoundError) as e:
+                print(f"[sprite] could not load {path}: {e}")
+                self.sprites[name] = None
+
         self.boss_slots = None
         self.player_actions = {}  # unit_name -> PlayerAction
         self.armed = None  # (unit_name, position) currently armed, or None. position is 0 (bottom) or 1 (top).
@@ -308,6 +358,11 @@ class GameUI:
         self.skill_circle_pos = {}
         self.boss_slot_rects = {}
         self.unopposed_btn_rects = {}
+
+        # --- turn resolution animation state ---
+        self.phase = "planning"  # "planning" | "resolving"
+        self.resolving_step_iter = None
+        self.current_step = None
 
         self._start_new_planning_phase()
 
@@ -360,11 +415,40 @@ class GameUI:
         if not self._all_actions_ready() or not self.boss.is_alive():
             return
         actions = list(self.player_actions.values())
-        log = self.battle.resolve_turn(self.boss_slots, actions)
-        for line in log.dump().split("\n"):
+        self.resolving_step_iter = self.battle.resolve_turn_steps(self.boss_slots, actions)
+        self.phase = "resolving"
+        self._advance_step()
+
+    def _advance_step(self):
+        """Pulls the next TurnStep from the resolution generator and applies
+        its log lines. Called once when a turn starts, then once per click
+        while resolving. If the generator is exhausted, wraps up the turn
+        and returns to planning."""
+        try:
+            step = next(self.resolving_step_iter)
+        except StopIteration:
+            self._finish_resolving_turn()
+            return
+        self.current_step = step
+        for line in step.log_lines:
             self.log_lines.append(line)
         self.log_lines = self.log_lines[-200:]
+
+    def _finish_resolving_turn(self):
+        self.phase = "planning"
+        self.current_step = None
+        self.resolving_step_iter = None
         self._start_new_planning_phase()
+
+    def _highlighted_names(self):
+        if self.phase == "resolving" and self.current_step is not None:
+            return set(self.current_step.participants)
+        return set()
+
+    def _highlighted_slot_index(self):
+        if self.phase == "resolving" and self.current_step is not None:
+            return self.current_step.slot_index
+        return None
 
     def _cycle_boss_skill(self, slot_index):
         if not self.manual_boss_mode or slot_index in self._claimed_slot_indices():
@@ -414,9 +498,46 @@ class GameUI:
         self._draw_connections()
         self._draw_log_panel()
         self._draw_start_button()
+        self._draw_current_step_banner()
         self._draw_tooltip_if_hovering()
 
+        if self.phase == "resolving":
+            # Freeze interaction during animation — visuals still fully render above,
+            # but nothing should be clickable while a turn is playing out.
+            self.clickables = []
+
         pygame.display.flip()
+
+    def _draw_current_step_banner(self):
+        if self.phase != "resolving" or self.current_step is None:
+            return
+        step = self.current_step
+
+        if step.kind == "clash":
+            clasher = step.participants[1]
+            winner_text = "Player wins!" if step.winner == "player" else "Boss wins!"
+            text = (f"CLASH — Boss's {step.boss_skill_name} rolled {step.boss_roll}  vs  "
+                     f"{clasher}'s {step.player_skill_name} rolled {step.player_roll}  →  {winner_text}")
+        elif step.kind == "boss_unopposed":
+            targets = ", ".join(step.participants[1:])
+            text = f"BOSS uses {step.boss_skill_name} unopposed on {targets}"
+        elif step.kind == "player_unopposed":
+            text = f"{step.participants[0]} attacks unopposed!"
+        elif step.kind == "turn_end":
+            text = "End of turn — status effects resolve..."
+        else:
+            text = ""
+
+        banner_w, banner_h = 1000, 62
+        x = (SCREEN_W - banner_w) // 2
+        y = 390
+        surf = pygame.Surface((banner_w, banner_h), pygame.SRCALPHA)
+        surf.fill((20, 20, 24, 235))
+        pygame.draw.rect(surf, COLOR_ARMED, surf.get_rect(), 2)
+        self.screen.blit(surf, (x, y))
+        draw_text(self.screen, self.font, text, (SCREEN_W // 2, y + 22), center=True)
+        draw_text(self.screen, self.font_small, "(click anywhere to continue)",
+                  (SCREEN_W // 2, y + 44), center=True, color=COLOR_DIM_TEXT)
 
     def _draw_tooltip_if_hovering(self):
         mouse_pos = pygame.mouse.get_pos()
@@ -532,9 +653,15 @@ class GameUI:
 
     def _draw_boss_area(self):
         cx, cy, r = SCREEN_W // 2, 85, 38
-        pygame.draw.circle(self.screen, (120, 40, 140), (cx, cy), r)
+        sprite = self.sprites.get("Boss")
+        if sprite is not None:
+            self.screen.blit(sprite, (cx - r, cy - r))
+        else:
+            pygame.draw.circle(self.screen, (120, 40, 140), (cx, cy), r)
         if self.boss.is_staggered:
             pygame.draw.circle(self.screen, COLOR_STAGGERED_RING, (cx, cy), r + 5, 4)
+        if self.boss.name in self._highlighted_names():
+            pygame.draw.circle(self.screen, COLOR_STEP_HIGHLIGHT, (cx, cy), r + 10, 4)
         draw_text(self.screen, self.font, self.boss.name, (cx, cy - r - 14), center=True)
         draw_hp_bar(self.screen, cx - 100, cy + r + 8, 200, 12, self.boss.hp, self.boss.max_hp,
                     COLOR_BOSS_HP_FG, stagger_thresholds=self.boss.active_stagger_thresholds())
@@ -564,6 +691,8 @@ class GameUI:
             bg = COLOR_SLOT_CLAIMED if is_claimed else COLOR_SLOT_BG
             pygame.draw.rect(self.screen, bg, rect, border_radius=8)
             pygame.draw.rect(self.screen, COLOR_TEXT, rect, 2, border_radius=8)
+            if i == self._highlighted_slot_index():
+                pygame.draw.rect(self.screen, COLOR_STEP_HIGHLIGHT, rect.inflate(8, 8), 3, border_radius=10)
 
             skill_label = f"{slot.skill_def.name}"
             roll_label = f"roll {slot.skill_def.roll_lo}-{slot.skill_def.roll_hi}   dmg {slot.skill_def.base_damage}"
@@ -594,10 +723,21 @@ class GameUI:
         for idx, unit in enumerate(self.units):
             cx = spacing * (idx + 1)
             alive = unit.is_alive()
-            color = (70, 150, 200) if alive else (60, 60, 60)
-            pygame.draw.circle(self.screen, color, (cx, y_portrait), r)
+            sprite = self.sprites.get(unit.name)
+            if sprite is not None:
+                self.screen.blit(sprite, (cx - r, y_portrait - r))
+                if not alive:
+                    # dim dead units with a translucent dark overlay on top of the sprite
+                    overlay = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+                    pygame.draw.circle(overlay, (20, 20, 20, 190), (r, r), r)
+                    self.screen.blit(overlay, (cx - r, y_portrait - r))
+            else:
+                color = (70, 150, 200) if alive else (60, 60, 60)
+                pygame.draw.circle(self.screen, color, (cx, y_portrait), r)
             if alive and unit.is_staggered:
                 pygame.draw.circle(self.screen, COLOR_STAGGERED_RING, (cx, y_portrait), r + 5, 4)
+            if unit.name in self._highlighted_names():
+                pygame.draw.circle(self.screen, COLOR_STEP_HIGHLIGHT, (cx, y_portrait), r + 10, 4)
             draw_text(self.screen, self.font, unit.name, (cx, y_portrait - r - 15), center=True)
             draw_hp_bar(self.screen, cx - 65, y_portrait + r + 7, 130, 11, unit.hp, unit.max_hp,
                         COLOR_HP_FG, stagger_thresholds=unit.active_stagger_thresholds())
@@ -717,6 +857,12 @@ class GameUI:
     # ---------------- event handling ----------------
 
     def handle_click(self, pos):
+        if self.phase == "resolving":
+            # Animation is click-to-advance: clickables are frozen during
+            # resolution (see draw()), so any click just moves to the next step.
+            self._advance_step()
+            return
+
         for c in reversed(self.clickables):
             if c.collide(pos):
                 kind, payload = c.payload
