@@ -1,0 +1,4 @@
+# Lightweight ML deps for Implementation 2 (ARP layer).
+# Install inside the web-ui venv: pip install -r implementation_2/requirements.txt
+scikit-learn>=1.4.0
+numpy>=1.26.0
