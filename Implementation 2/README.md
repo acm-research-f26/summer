@@ -44,4 +44,4 @@ GED is only one area that has potential for improvement.
 - Currently, graph representations are undirected, ignore edge labels, and use only node types as lables. This could be extended to involve directed graphs and more information about the circuit such as pin type information, component values, hierarchical circuit information, etc.
 - This framework could be extended to support multimodal retreival across circuit diagrams, netlists, and text circuit descriptions.
 
-**Additional Sources:**
+**Additional Sources:** https://arxiv.org/pdf/2503.11658
