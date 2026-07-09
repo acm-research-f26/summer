@@ -1,0 +1,50 @@
+{
+  "eval_type": "offline_sample_pages",
+  "tasks": [
+    "utd_admissions",
+    "wiki_python",
+    "hn_top_story"
+  ],
+  "baseline": {
+    "runs": 3,
+    "success_rate": 1.0,
+    "avg_steps": 4.333333333333333,
+    "avg_wall_time_sec": 0.0016666666666666668,
+    "avg_irrelevant_clicks": 3.0
+  },
+  "arp": {
+    "runs": 3,
+    "success_rate": 1.0,
+    "avg_steps": 1.6666666666666667,
+    "avg_wall_time_sec": 0.001,
+    "avg_irrelevant_clicks": 0.6666666666666666
+  },
+  "improvement": {
+    "steps_reduction_pct": 61.5,
+    "irrelevant_clicks_reduction_pct": 77.8,
+    "success_rate_delta": 0.0
+  },
+  "per_task": [
+    {
+      "task_id": "utd_admissions",
+      "baseline_steps": 5,
+      "arp_steps": 2,
+      "baseline_irrelevant": 4,
+      "arp_irrelevant": 1
+    },
+    {
+      "task_id": "wiki_python",
+      "baseline_steps": 4,
+      "arp_steps": 2,
+      "baseline_irrelevant": 2,
+      "arp_irrelevant": 0
+    },
+    {
+      "task_id": "hn_top_story",
+      "baseline_steps": 4,
+      "arp_steps": 1,
+      "baseline_irrelevant": 3,
+      "arp_irrelevant": 1
+    }
+  ]
+}
