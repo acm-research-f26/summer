@@ -44,10 +44,10 @@ Current wrist actigraphy-based screening for sleep apnea suffers from two critic
 This project has the potential to democratize sleep apnea screening by replacing expensive, sleep-lab-bound PSG with a consumer-grade, in-ear wearable. With near-PSG diagnostic accuracy, it can enable early detection of OSA in at-risk populations, reduce healthcare system burdens, and provide longitudinal data for tracking treatment efficacy (e.g., CPAP adherence). It also paves the way for personalized sleep medicine by enabling granular, night-by-night tracking of apnea severity and event characteristics in the patient's natural sleep environment.
 
 #### future work
-- **Real-time algorithm optimization**: Port the signal processing pipeline from MATLAB to embedded C/C++ for on-device inference, enabling real-time event alerts and closed-loop stimulation (e.g., auditory tone to prompt positional change)
-- **Multi-day longitudinal studies**: Validate the device across multiple nights and diverse patient populations (including those with central apnea and mixed apnea) to assess robustness and reproducibility
-- **Integration with oximetry**: Add a reflective pulse oximeter to the ear-worn device to directly capture SpO₂ desaturation events, further reducing reliance on PSG and adding a critical clinical metric for OSA severity grading
-- **Clinical threshold validation**: Extend the ear-EEG/audio system to pathological datasets to validate detection thresholds across different patient populations and OSA severities
+- **real-time algorithm optimization**: Port the signal processing pipeline from MATLAB to embedded C/C++ for on-device inference, enabling real-time event alerts and closed-loop stimulation (e.g., auditory tone to prompt positional change)
+- **multi-day longitudinal studies**: Validate the device across multiple nights and diverse patient populations (including those with central apnea and mixed apnea) to assess robustness and reproducibility
+- **integration with oximetry**: Add a reflective pulse oximeter to the ear-worn device to directly capture SpO₂ desaturation events, further reducing reliance on PSG and adding a critical clinical metric for OSA severity grading
+- **clinical threshold validation**: Extend the ear-EEG/audio system to pathological datasets to validate detection thresholds across different patient populations and OSA severities
 
 **additional sources:**
 - Arolaakso, M., Pitkanen, H., Pitkanen, M., et al. (2025). RAVEN: Software for automated sleep microstructure analysis from electroencephalography. doi: 10.5281/zenodo.15386929
