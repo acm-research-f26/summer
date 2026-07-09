@@ -1,8 +1,8 @@
 ![ACM Research Banner Light](https://github.com/ACM-Research/paperImplementations/assets/108421238/467a89e3-72db-41d7-9a25-51d2c589bfd9)
 
-# Mixed-Precision Proportional Bit-Budget Allocator
+# Mixed-Precision Proportional Bit-Budget Allocator 💅
 
-## 📌 Project Summary
+## 💅 Project Summary 💅
 
 **Part 2** of this repo — an extension of the layer-importance ranking benchmark in [`1-ranking-effectiveness/`](1-ranking-effectiveness/).
 
@@ -12,7 +12,7 @@ The main artifact is [`2-bit-allocation/mixed_precision_proportional_allocator_b
 
 **Headline finding:** proportional allocation **separates rankers at every budget target**—unlike Part 1’s two-level scheme (low-bit + INT8), which ties many methods together. A **2×2 taxonomy** (weight values vs spectral × propagation vs none) predicts the best scorer by architecture: **PCT** on CNNs, **SEA / Spectral Top-10** on ViTs, **SEA / Entropy** on LLMs.
 
-## 🔗 Relationship to Part 1
+## 👠 Relationship to Part 1
 
 | | **Part 1** — Ranking effectiveness | **Part 2** — Bit allocation (this notebook) |
 |---|---|---|
@@ -24,13 +24,13 @@ The main artifact is [`2-bit-allocation/mixed_precision_proportional_allocator_b
 
 Part 1 established **PCT for CNNs, Entropy for ViTs** under the two-level protocol. Part 2 tests whether those rankings still win when bits are allocated **proportionally** on harder benchmarks and real deployment bit targets.
 
-## 🎯 Motivation
+## 💅 Motivation
 
 Production teams rarely specify “upgrade exactly 5 layers to INT8.” They specify a **memory or latency budget** — e.g. “average 3.0 bits per weight.” A greedy allocator that walks layers by sensitivity and upgrades each as high as the budget allows is the standard approach in mixed-precision literature (NSDS, HAWQ, Schaefer et al. Algorithm 2).
 
 Part 1’s two-level recovery sweep is the right tool for **comparing rankers**, but it collapses methods at many targets: once you fix *k* and the low bit-width, different rankings can produce identical bit mixes. Part 2 closes the loop from **score → allocation → accuracy/PPL** under continuous budget targets, which is what you actually ship.
 
-## 🧩 Novelty
+## 👠 Novelty
 
 We propose a **2×2 taxonomy of data-free sensitivity metrics** along two axes — **information source** and **propagation awareness** — and show empirically that the optimal metric is **architecture-dependent**: numerical metrics (PCT) dominate on CNNs while spectral metrics (SEA, Spectral Top-10) dominate on vision transformers and LLMs. This provides the first principled framework for data-free metric selection in mixed-precision quantization.
 
@@ -63,7 +63,7 @@ At extreme LLM budgets (≈2.5 avg bits), **Spectral-PCT** (with-propagation hyb
 - **Cross-scale evaluation**: Same allocator protocol on CIFAR-100, ImageNet, and a 1.5B LLM (WikiText-2 perplexity).
 - **Ranker differentiation at every target**: Different score orderings produce different bit mixes at each target avg-bit, so allocator quality directly tests ranking quality.
 
-## 🧠 Methodology
+## 💅 Methodology
 
 ### Allocation protocol (NSDS / HAWQ / Schaefer et al. Algorithm 2)
 
@@ -101,7 +101,7 @@ Scores are loaded from cached CSVs (legacy Part 1 / dataset-specific benchmarks 
 - `FORCE_RECOMPUTE = False` reuses cached allocator CSVs in `results/proportional_mp_allocator/`.
 - `RUN_INFOQ = False` by default (slow, especially on LLM).
 
-## 🚀 Running the benchmark
+## 👠 Running the benchmark
 
 **Requirements:** Python 3.10+, PyTorch, torchvision, pandas, numpy, scipy, scikit-learn, matplotlib, `datasets`, `transformers`, `accelerate`.
 
@@ -129,7 +129,7 @@ jupyter notebook 2-bit-allocation/mixed_precision_proportional_allocator_benchma
 | `vision_accuracy_vs_budget.png` | Accuracy vs target avg bits (vision) |
 | `qwen_ppl_vs_budget.png` | Perplexity vs target avg bits (LLM) |
 
-## 📊 Results
+## 💅 Results
 
 Headline: **best method per benchmark @ each target** (vision = accuracy ↑, Qwen = perplexity ↓). Smoke-test run; set `SMOKE_TEST = False` for full eval.
 
@@ -198,7 +198,7 @@ At usable LLM budgets (3.5–4.0 avg bits), **SEA** and **Entropy** (Part 1’s 
 
 The two-level Part 1 benchmark tells you *which layers to protect*; this allocator benchmark tells you *how to spend a continuous bit budget* using those same rankings — and the **2×2 taxonomy** predicts which quadrant to pick before you run a sweep.
 
-## 🌍 Impact
+## 👠 Impact
 
 ### Why proportional allocation matters
 
