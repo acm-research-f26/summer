@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "description": "Fixed browser-agent tasks derived from Implementation 1 observations. Used to compare baseline vs ARP-enhanced runs.",
+  "metrics": ["success", "steps", "wall_time_sec", "irrelevant_clicks"],
+  "tasks": [
+    {
+      "id": "utd_admissions",
+      "prompt": "Open the UTD website and find when admissions open for fall semester",
+      "start_url": "https://www.utdallas.edu",
+      "success_keywords": ["admission", "apply", "deadline", "fall"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "wiki_python",
+      "prompt": "Go to Wikipedia and find when Python programming language was first released",
+      "start_url": "https://en.wikipedia.org",
+      "success_keywords": ["1991", "guido", "released", "python"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "hn_top_story",
+      "prompt": "Open Hacker News and read the title of the top story on the front page",
+      "start_url": "https://news.ycombinator.com",
+      "success_keywords": ["story", "points", "comments"],
+      "difficulty": "easy"
+    },
+    {
+      "id": "mdn_fetch",
+      "prompt": "On MDN Web Docs, find what the fetch API is used for",
+      "start_url": "https://developer.mozilla.org",
+      "success_keywords": ["fetch", "request", "network", "http"],
+      "difficulty": "medium"
+    },
+    {
+      "id": "github_stars",
+      "prompt": "Open the browser-use GitHub repo and find how many stars it has",
+      "start_url": "https://github.com/browser-use/browser-use",
+      "success_keywords": ["star", "browser-use"],
+      "difficulty": "easy"
+    }
+  ]
+}
