@@ -1,0 +1,40 @@
+"""
+run_all.py
+Run the full pipeline end to end:
+  1. Generate synthetic HAI-like data (or skip if real CSVs already exist)
+  2. Train autoencoder on normal actuator command windows
+  3. Evaluate on test set, print metrics, save plot
+
+Usage:
+  python3 run_all.py              # uses synthetic data
+  python3 run_all.py --real       # expects data/train1.csv + data/test1.csv
+                                   # (real HAI 21.03 from github.com/icsdataset/hai)
+"""
+
+import sys
+import os
+
+USE_REAL = "--real" in sys.argv
+
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+if not USE_REAL:
+    print("=== Generating synthetic HAI-like data ===")
+    import generate_mock_data
+    generate_mock_data.main()
+
+print("\n=== Training autoencoder ===")
+from train import train
+model, X_train, y_train, X_test, y_test, n_features = train()
+
+print("\n=== Evaluating ===")
+from evaluate import evaluate
+results = evaluate()
+
+print("\n=== Done ===")
+print(f"F1: {results['f1']:.4f} | Precision: {results['precision']:.4f} | Recall: {results['recall']:.4f}")
+if results["auc"]:
+    print(f"ROC-AUC: {results['auc']:.4f}")
+print("\nConnection to GridLock:")
+print("This detector flags anomalous actuator commands -- the same signal")
+print("PhysGuard's ML layer uses to catch injected commands before execution.")
