@@ -56,6 +56,13 @@ class PlayerUnit(Combatant):
     skill1: SkillDef = None
     skill2: SkillDef = None
     queue: SkillQueue = field(init=False, default=None)
+    # Optional passive hooks (see the passive_* functions near the skill
+    # effect library below). passive_roll_bonus_fn(unit, opponent) -> float
+    # added to both roll bounds whenever this unit rolls in a clash.
+    # passive_damage_reduction_fn(unit) -> float multiplier applied to any
+    # damage this unit takes (1.0 = no reduction, 0.8 = 20% less, etc).
+    passive_roll_bonus_fn: object = None
+    passive_damage_reduction_fn: object = None
 
     def init_queue(self, rng):
         self.queue = SkillQueue(rng)
@@ -73,6 +80,8 @@ class BossSkillDef:
     hits_all: bool = False
     description: str = ""
     effect: object = None  # optional callable(battle, source, target, log); None -> flat damage only
+    clash_roll_bonus: int = 0  # added to both roll bounds ONLY when this skill is being clashed
+    clash_damage_multiplier: float = 1.0  # multiplies damage ONLY if this skill wins a clash
 
 
 @dataclass
@@ -118,7 +127,7 @@ class TurnStep:
     """
     def __init__(self, kind, participants, log_lines=None, slot_index=None,
                  boss_roll=None, player_roll=None, boss_skill_name=None,
-                 player_skill_name=None, winner=None):
+                 player_skill_name=None, winner=None, fizzled=False):
         self.kind = kind  # 'clash' | 'boss_unopposed' | 'player_unopposed' | 'turn_end'
         self.participants = participants  # entity names involved, for UI highlighting
         self.log_lines = log_lines or []
@@ -128,6 +137,10 @@ class TurnStep:
         self.boss_skill_name = boss_skill_name
         self.player_skill_name = player_skill_name
         self.winner = winner  # 'boss' | 'player', only set for 'clash'
+        # True when the boss "won" the roll (unopposed, or won a clash) but was
+        # actually staggered at the moment of execution, so nothing really
+        # happened - lets the UI say so instead of implying a real attack landed.
+        self.fizzled = fizzled
 
     def __repr__(self):
         return f"<TurnStep {self.kind} participants={self.participants}>"
@@ -152,6 +165,10 @@ class Battle:
         for u in units:
             u.init_queue(self.rng)
         self.turn_number = 0
+        # Temporarily set >1.0 around a single _execute_boss_skill call when a
+        # skill like Clash Baiter wins a clash and its damage bonus applies;
+        # always reset to 1.0 immediately after (see _resolve_clash).
+        self._pending_damage_multiplier = 1.0
 
     def get_unit(self, name):
         return self.units[name]
@@ -160,9 +177,27 @@ class Battle:
         return [u for u in self.units.values() if u.is_alive()]
 
     def boss_choose_turn(self):
-        """Boss picks 3 distinct random skills from its 5, and random target(s) for each."""
-        chosen = self.rng.sample(self.boss.skills, 3)
+        """
+        Boss picks 3 distinct random skills from its 5, and random target(s)
+        for each. If the boss is ALREADY staggered when this is called (i.e.
+        entering the turn staggered, same as a staggered player unit), it
+        picks no skills at all this turn - there's nothing to clash against,
+        and every player action for the turn is necessarily unopposed.
+        (A boss that only becomes staggered mid-turn, after already having
+        chosen its 3 skills for that turn, still has those skills - see
+        the `fizzled` handling in _resolve_clash / _execute_boss_skill for
+        that case instead.)
+
+        Also returns no skills if the battle is already over - the boss is
+        dead (player won), or there are no living party members left to
+        target (player lost) - since there's nothing left to plan a turn
+        around either way, and picking a random target from an empty party
+        would otherwise crash.
+        """
         alive_names = [u.name for u in self.alive_units()]
+        if self.boss.is_staggered or not self.boss.is_alive() or not alive_names:
+            return []
+        chosen = self.rng.sample(self.boss.skills, 3)
         slots = []
         for skill_def in chosen:
             if skill_def.hits_all:
@@ -218,17 +253,61 @@ class Battle:
             clashing_action = clash_map.get(i)
             start_idx = len(log.lines)
             if clashing_action is not None:
-                boss_roll, player_roll, winner, boss_skill_name, player_skill_name = \
-                    self._resolve_clash(slot, clashing_action, log)
-                yield TurnStep(
-                    kind="clash",
-                    participants=[self.boss.name, clashing_action.unit_name],
-                    log_lines=log.lines[start_idx:],
-                    slot_index=i,
-                    boss_roll=boss_roll, player_roll=player_roll, winner=winner,
-                    boss_skill_name=boss_skill_name, player_skill_name=player_skill_name,
-                )
+                clashing_unit = self.get_unit(clashing_action.unit_name)
+                if self.boss.is_staggered:
+                    # Boss can't contest ANY clash while staggered - same as a
+                    # staggered player having no skills at all. The player's
+                    # action goes through automatically, exactly as if it had
+                    # been unopposed; the boss's slot is simply discarded.
+                    player_def = clashing_unit.get_skill_def(clashing_action.skill_type)
+                    log.add(f"BOSS is staggered and cannot contest the clash - "
+                             f"{clashing_unit.name}'s {player_def.name} goes through unopposed!")
+                    slot.discarded = True
+                    self._execute_player_skill(clashing_action, log)
+                    yield TurnStep(
+                        kind="clash",
+                        participants=[self.boss.name, clashing_action.unit_name],
+                        log_lines=log.lines[start_idx:],
+                        slot_index=i,
+                        boss_roll=None, player_roll=None, winner="player",
+                        boss_skill_name=slot.skill_def.name, player_skill_name=player_def.name,
+                        fizzled=False,
+                    )
+                elif clashing_unit.is_staggered:
+                    # Symmetric case: the CLASHING PLAYER is staggered (e.g. hit
+                    # hard enough by an earlier slot this same turn) and so has
+                    # no skills at all to contest with - the boss's attack lands
+                    # in full, on its original target, exactly as if unopposed.
+                    # The player's action is simply wasted (same "saved for next
+                    # turn" handling _execute_player_skill already does).
+                    player_def = clashing_unit.get_skill_def(clashing_action.skill_type)
+                    log.add(f"{clashing_unit.name} is staggered and cannot contest the clash - "
+                             f"{slot.skill_def.name} lands unopposed!")
+                    self._execute_player_skill(clashing_action, log)
+                    self._execute_boss_skill(slot, log)
+                    yield TurnStep(
+                        kind="clash",
+                        participants=[self.boss.name, clashing_action.unit_name],
+                        log_lines=log.lines[start_idx:],
+                        slot_index=i,
+                        boss_roll=None, player_roll=None, winner="boss",
+                        boss_skill_name=slot.skill_def.name, player_skill_name=player_def.name,
+                        fizzled=False,
+                    )
+                else:
+                    boss_roll, player_roll, winner, boss_skill_name, player_skill_name, fizzled = \
+                        self._resolve_clash(slot, clashing_action, log)
+                    yield TurnStep(
+                        kind="clash",
+                        participants=[self.boss.name, clashing_action.unit_name],
+                        log_lines=log.lines[start_idx:],
+                        slot_index=i,
+                        boss_roll=boss_roll, player_roll=player_roll, winner=winner,
+                        boss_skill_name=boss_skill_name, player_skill_name=player_skill_name,
+                        fizzled=fizzled,
+                    )
             else:
+                boss_was_staggered = self.boss.is_staggered
                 self._execute_boss_skill(slot, log)
                 yield TurnStep(
                     kind="boss_unopposed",
@@ -236,6 +315,7 @@ class Battle:
                     log_lines=log.lines[start_idx:],
                     slot_index=i,
                     boss_skill_name=slot.skill_def.name,
+                    fizzled=boss_was_staggered,
                 )
 
         # Step 2: remaining (unopposed) player actions, in deployment order
@@ -266,12 +346,22 @@ class Battle:
     def _apply_damage(self, target, base_amount, log, floor_at_1=False):
         """
         Applies damage to target (a PlayerUnit or Boss), accounting for the
-        1.5x multiplier while staggered, then checks whether this damage
-        crosses a new stagger threshold. If floor_at_1 is True, this hit
-        cannot reduce HP below 1 (used for the self-status unit's own burn).
+        1.5x multiplier while staggered, any pending clash-bonus damage
+        multiplier (see _resolve_clash), and any passive damage-reduction the
+        target has active (e.g. the self-status unit's own tremor/burn
+        thresholds), then checks whether this damage crosses a new stagger
+        threshold. If floor_at_1 is True, this hit cannot reduce HP below 1
+        (used for the self-status unit's own burn).
         """
         was_staggered = target.is_staggered
-        dmg = int(round(base_amount * 1.5)) if was_staggered else base_amount
+        amount = base_amount * self._pending_damage_multiplier
+        reduction_fn = getattr(target, "passive_damage_reduction_fn", None)
+        if reduction_fn is not None:
+            reduction_mult = reduction_fn(target)
+            if reduction_mult != 1.0:
+                amount *= reduction_mult
+                log.add(f"  ({target.name}'s passive reduces incoming damage x{reduction_mult})")
+        dmg = int(round(amount * 1.5)) if was_staggered else int(round(amount))
         if floor_at_1:
             dmg = min(dmg, max(0, target.hp - 1))
         target.hp -= dmg
@@ -410,9 +500,27 @@ class Battle:
         unit = self.get_unit(player_action.unit_name)
         player_def = unit.get_skill_def(player_action.skill_type)
 
+        # Some boss skills (e.g. Clash Baiter) get bonus roll power specifically
+        # while being clashed - never applies to its unopposed roll (it doesn't
+        # roll at all when unopposed) or to any other skill's rolls.
+        boss_roll_lo = boss_def.roll_lo + boss_def.clash_roll_bonus
+        boss_roll_hi = boss_def.roll_hi + boss_def.clash_roll_bonus
+        if boss_def.clash_roll_bonus:
+            log.add(f"  {boss_def.name}'s clash bonus applies: rolls +{boss_def.clash_roll_bonus} "
+                     f"(now {boss_roll_lo}-{boss_roll_hi}).")
+
+        player_roll_lo, player_roll_hi = player_def.roll_lo, player_def.roll_hi
+        if unit.passive_roll_bonus_fn is not None:
+            bonus = unit.passive_roll_bonus_fn(unit, self.boss)
+            if bonus:
+                player_roll_lo = round(player_roll_lo + bonus)
+                player_roll_hi = round(player_roll_hi + bonus)
+                log.add(f"  {unit.name}'s passive applies: rolls +{bonus} "
+                         f"(now {player_roll_lo}-{player_roll_hi}).")
+
         while True:
-            boss_roll = self._roll(boss_def.roll_lo, boss_def.roll_hi)
-            player_roll = self._roll(player_def.roll_lo, player_def.roll_hi)
+            boss_roll = self._roll(boss_roll_lo, boss_roll_hi)
+            player_roll = self._roll(player_roll_lo, player_roll_hi)
             log.add(
                 f"CLASH: {boss_def.name} rolled {boss_roll} "
                 f"vs {unit.name}'s {player_def.name} rolled {player_roll}"
@@ -431,15 +539,24 @@ class Battle:
                 if boss_slot.target_names != [unit.name]:
                     log.add(f"  {boss_def.name} redirects onto {unit.name} (the clasher).")
                 boss_slot.target_names = [unit.name]
-            self._execute_boss_skill(boss_slot, log)
+            if boss_def.clash_damage_multiplier != 1.0:
+                log.add(f"  {boss_def.name} deals {boss_def.clash_damage_multiplier}x damage "
+                         f"for winning the clash!")
+                self._pending_damage_multiplier = boss_def.clash_damage_multiplier
+            fizzled = self.boss.is_staggered  # winning the roll doesn't matter if staggered
+            try:
+                self._execute_boss_skill(boss_slot, log)
+            finally:
+                self._pending_damage_multiplier = 1.0
             winner = "boss"
         else:
             log.add(f"  {unit.name} wins clash. {boss_def.name} is discarded.")
             boss_slot.discarded = True
             self._execute_player_skill(player_action, log)
             winner = "player"
+            fizzled = False
 
-        return boss_roll, player_roll, winner, boss_def.name, player_def.name
+        return boss_roll, player_roll, winner, boss_def.name, player_def.name, fizzled
 
     def _execute_boss_skill(self, slot, log):
         if slot.discarded:
@@ -453,7 +570,7 @@ class Battle:
             if not target.is_alive():
                 continue
             if skill_def.effect is not None:
-                skill_def.effect(self, self.boss, target, log)
+                skill_def.effect(self, self.boss, target, log, skill_def)
             else:
                 dmg = self._apply_damage(target, skill_def.base_damage, log)
                 log.add(
@@ -470,7 +587,7 @@ class Battle:
             return
         skill_def = unit.get_skill_def(action.skill_type)
         if skill_def.effect is not None:
-            skill_def.effect(self, unit, self.boss, log)
+            skill_def.effect(self, unit, self.boss, log, skill_def)
         else:
             dmg = self._apply_damage(self.boss, skill_def.base_damage, log)
             log.add(
@@ -484,27 +601,30 @@ class Battle:
 # ----------------------------------------------------------------------------
 # SKILL EFFECT LIBRARY
 #
-# Each function has signature (battle, source, target, log) and is attached to
-# a SkillDef/BossSkillDef via its `effect=` field. `source` is the acting unit
-# (or the Boss); `target` is whoever the skill is aimed at (the Boss, for all
-# player skills; a specific party unit, for boss skills).
+# Each function has signature (battle, source, target, log, skill_def) and is
+# attached to a SkillDef/BossSkillDef via its `effect=` field. `source` is the
+# acting unit (or the Boss); `target` is whoever the skill is aimed at (the
+# Boss, for all player skills; a specific party unit, for boss skills).
+# `skill_def` is the SkillDef/BossSkillDef itself, so damage is read from
+# skill_def.base_damage (making it an actual tunable) rather than hardcoded -
+# only the status-effect magnitudes (potency/count) are fixed numbers here.
 #
 # NOTE: BossSkillDef "Clash Baiter"'s clash-triggered +5 roll / +900% damage
 # bonus is a roll/clash-time mechanic, not a target-effect, and is NOT yet
 # implemented here — it still just deals its flat base damage.
 # ----------------------------------------------------------------------------
 
-def effect_tremor_scorch_skill1(battle, source, target, log):
-    dmg = battle._apply_damage(target, 25, log)
-    log.add(f"{source.name} uses Tremor Jab on {target.name}: {dmg} damage (hp now {target.hp}).")
+def effect_tremor_scorch_skill1(battle, source, target, log, skill_def):
+    dmg = battle._apply_damage(target, skill_def.base_damage, log)
+    log.add(f"{source.name} uses {skill_def.name} on {target.name}: {dmg} damage (hp now {target.hp}).")
     battle._apply_tremor(target, potency=3, count=2, log=log)
     if target.tremor_count > 3:
         battle._tremor_burst(target, log)
 
 
-def effect_tremor_scorch_skill2(battle, source, target, log):
-    dmg = battle._apply_damage(target, 50, log)
-    log.add(f"{source.name} uses Tremor Burst Strike on {target.name}: {dmg} damage (hp now {target.hp}).")
+def effect_tremor_scorch_skill2(battle, source, target, log, skill_def):
+    dmg = battle._apply_damage(target, skill_def.base_damage, log)
+    log.add(f"{source.name} uses {skill_def.name} on {target.name}: {dmg} damage (hp now {target.hp}).")
     battle._apply_tremor(target, potency=2, count=0, log=log)
     # Convert to scorch BEFORE bursting, so both bursts (including this one) count as scorch.
     battle._trigger_amplitude_conversion(target, log)
@@ -512,66 +632,112 @@ def effect_tremor_scorch_skill2(battle, source, target, log):
     battle._tremor_burst(target, log)
 
 
-def effect_dark_flame_skill1(battle, source, target, log):
-    dmg = battle._apply_damage(target, 25, log)
-    log.add(f"{source.name} uses Flame Tag on {target.name}: {dmg} damage (hp now {target.hp}).")
-    battle._apply_burn(target, potency=source.magic_bullets, count=0, log=log)
+def effect_dark_flame_skill1(battle, source, target, log, skill_def):
+    dmg = battle._apply_damage(target, skill_def.base_damage, log)
+    log.add(f"{source.name} uses {skill_def.name} on {target.name}: {dmg} damage (hp now {target.hp}).")
+    battle._apply_burn(target, potency=source.magic_bullets, count=3, log=log)
     battle._apply_dark_flame(target, count=1, log=log)
     source.magic_bullets = min(source.magic_bullets + 2, source.max_magic_bullets)
     log.add(f"  {source.name} gains 2 magic bullets (now {source.magic_bullets}/{source.max_magic_bullets}).")
 
 
-def effect_dark_flame_skill2(battle, source, target, log):
-    dmg = battle._apply_damage(target, 50, log)
-    log.add(f"{source.name} uses Dark Flame Surge on {target.name}: {dmg} damage (hp now {target.hp}).")
+def effect_dark_flame_skill2(battle, source, target, log, skill_def):
+    dmg = battle._apply_damage(target, skill_def.base_damage, log)
+    log.add(f"{source.name} uses {skill_def.name} on {target.name}: {dmg} damage (hp now {target.hp}).")
     source.magic_bullets = min(source.magic_bullets + 1, source.max_magic_bullets)
     log.add(f"  {source.name} gains 1 magic bullet (now {source.magic_bullets}/{source.max_magic_bullets}).")
     battle._apply_dark_flame(target, count=source.magic_bullets, log=log)
 
 
-def effect_self_status_skill1(battle, source, target, log):
-    dmg = battle._apply_damage(target, 25, log)
-    log.add(f"{source.name} uses Shared Tremor on {target.name}: {dmg} damage (hp now {target.hp}).")
+def effect_self_status_skill1(battle, source, target, log, skill_def):
+    dmg = battle._apply_damage(target, skill_def.base_damage, log)
+    log.add(f"{source.name} uses {skill_def.name} on {target.name}: {dmg} damage (hp now {target.hp}).")
     battle._apply_tremor(target, potency=16, count=8, log=log)
-    battle._apply_tremor(source, potency=5, count=1, log=log)
+    battle._apply_tremor(source, potency=5, count=3, log=log)
 
 
-def effect_self_status_skill2(battle, source, target, log):
-    base = 50 + source.burn_potency
+def effect_self_status_skill2(battle, source, target, log, skill_def):
+    base = skill_def.base_damage + source.burn_potency
     dmg = battle._apply_damage(target, base, log)
-    log.add(f"{source.name} uses Shared Burn on {target.name}: {dmg} damage (hp now {target.hp}).")
+    log.add(f"{source.name} uses {skill_def.name} on {target.name}: {dmg} damage (hp now {target.hp}).")
     battle._apply_burn(target, potency=10, count=5, log=log, nonlethal=True)
     battle._apply_burn(source, potency=10, count=5, log=log, nonlethal=True)
 
 
-def effect_boss_tremor_slam(battle, source, target, log):
-    dmg = battle._apply_damage(target, 25, log)
-    log.add(f"BOSS uses Tremor Slam on {target.name}: {dmg} damage (hp now {target.hp}).")
+def effect_boss_tremor_slam(battle, source, target, log, skill_def):
+    dmg = battle._apply_damage(target, skill_def.base_damage, log)
+    log.add(f"BOSS uses {skill_def.name} on {target.name}: {dmg} damage (hp now {target.hp}).")
     battle._apply_tremor(target, potency=5, count=3, log=log)
     battle._tremor_burst(target, log)
 
 
-def effect_boss_burn_wave(battle, source, target, log):
-    dmg = battle._apply_damage(target, 10, log)
-    log.add(f"BOSS uses Burn Wave on {target.name}: {dmg} damage (hp now {target.hp}).")
+def effect_boss_burn_wave(battle, source, target, log, skill_def):
+    dmg = battle._apply_damage(target, skill_def.base_damage, log)
+    log.add(f"BOSS uses {skill_def.name} on {target.name}: {dmg} damage (hp now {target.hp}).")
     battle._apply_burn(target, potency=10, count=3, log=log)
 
 
-def effect_boss_clash_baiter(battle, source, target, log):
-    dmg = battle._apply_damage(target, 15, log)
-    log.add(f"BOSS uses Clash Baiter on {target.name}: {dmg} damage (hp now {target.hp}).")
-    battle._apply_tremor(target, potency=3, count=0, log=log)
+def effect_boss_clash_baiter(battle, source, target, log, skill_def):
+    dmg = battle._apply_damage(target, skill_def.base_damage, log)
+    log.add(f"BOSS uses {skill_def.name} on {target.name}: {dmg} damage (hp now {target.hp}).")
+    battle._apply_tremor(target, potency=3, count=3, log=log)
 
 
-def effect_boss_scorch_point(battle, source, target, log):
-    dmg = battle._apply_damage(target, 20, log)
-    log.add(f"BOSS uses Scorch Point on {target.name}: {dmg} damage (hp now {target.hp}).")
-    battle._apply_burn(target, potency=10, count=0, log=log)
+def effect_boss_scorch_point(battle, source, target, log, skill_def):
+    dmg = battle._apply_damage(target, skill_def.base_damage, log)
+    log.add(f"BOSS uses {skill_def.name} on {target.name}: {dmg} damage (hp now {target.hp}).")
+    battle._apply_burn(target, potency=10, count=3, log=log)
 
 
-def effect_boss_amplitude_cascade(battle, source, target, log):
-    dmg = battle._apply_damage(target, 40, log)
-    log.add(f"BOSS uses Amplitude Cascade on {target.name}: {dmg} damage (hp now {target.hp}).")
+def effect_boss_amplitude_cascade(battle, source, target, log, skill_def):
+    dmg = battle._apply_damage(target, skill_def.base_damage, log)
+    log.add(f"BOSS uses {skill_def.name} on {target.name}: {dmg} damage (hp now {target.hp}).")
     battle._apply_tremor(target, potency=1, count=1, log=log)
     battle._trigger_amplitude_conversion(target, log)
     battle._tremor_burst(target, log)
+
+
+# ----------------------------------------------------------------------------
+# PASSIVE LIBRARY
+#
+# Each roll-bonus function has signature (unit, opponent) -> float, returning
+# the total bonus to add to BOTH of this unit's roll bounds during a clash
+# (0 if no condition is met). Each damage-reduction function has signature
+# (unit) -> float, returning a damage multiplier (1.0 = no reduction).
+# Attached to PlayerUnit via passive_roll_bonus_fn / passive_damage_reduction_fn.
+# ----------------------------------------------------------------------------
+
+def passive_roll_bonus_tremor_scorch(unit, opponent):
+    bonus = 0.0
+    if opponent.burn_potency >= 15:
+        bonus += 1.5
+    if opponent.tremor_potency >= 15:
+        bonus += 1.5
+    return bonus
+
+
+def passive_roll_bonus_dark_flame(unit, opponent):
+    bonus = 0.0
+    if unit.magic_bullets >= 5:
+        bonus += 1.5
+    if opponent.burn_potency >= 15:
+        bonus += 1.5
+    return bonus
+
+
+def passive_roll_bonus_self_status(unit, opponent):
+    bonus = 0.0
+    if unit.tremor_potency >= 10:
+        bonus += 1.5
+    if unit.burn_potency >= 15:
+        bonus += 1.5
+    return bonus
+
+
+def passive_damage_reduction_self_status(unit):
+    reduction = 0.0
+    if unit.tremor_potency >= 10:
+        reduction += 0.20
+    if unit.burn_potency >= 15:
+        reduction += 0.20
+    return 1.0 - reduction

@@ -142,9 +142,9 @@ def test_retarget_to_clasher_on_boss_win():
         s for s in game.boss.skills if not s.hits_all and s is not single_target_def
     )
 
-    original_target = game.units[1].name  # DarkFlameInflictor
-    clasher = game.units[0]                # TremorScorch
-    third_unit = game.units[2].name        # BurnTremorInflictor
+    original_target = game.units[1].name  # Lobotomy EGO: Magic Bullet
+    clasher = game.units[0]                # Thumb East Capo III
+    third_unit = game.units[2].name        # You Branch Adept
 
     # Slots 1 and 2 are pinned to non-hits_all skills aimed only at the third
     # unit, so they can't accidentally damage original_target and confound the check.
@@ -165,9 +165,16 @@ def test_retarget_to_clasher_on_boss_win():
 
     # Force boss to always win by rigging rolls: monkeypatch _roll to make boss roll high, player roll low
     original_roll = game.battle._roll
+    # Rig by call order, not by matching roll bounds: _resolve_clash always
+    # calls the boss's roll first, then the player's roll, each iteration of
+    # its reroll-on-tie loop. Rigging by bounds-equality is fragile whenever
+    # two different skills happen to share the same roll range (as some do),
+    # since that can make both sides match and tie forever. Call order can't
+    # collide like that.
+    call_count = [0]
     def rigged_roll(lo, hi):
-        # crude: if this is being called for the boss skill's own range, return hi; else lo
-        return hi if (lo, hi) == (single_target_def.roll_lo, single_target_def.roll_hi) else lo
+        call_count[0] += 1
+        return hi if call_count[0] % 2 == 1 else lo  # boss (odd calls) high, player (even) low
     game.battle._roll = rigged_roll
 
     game._start_turn()
@@ -423,6 +430,64 @@ def test_banner_does_not_crash_for_each_step_kind():
     print(f"test_banner_does_not_crash_for_each_step_kind passed. kinds seen: {seen_kinds}")
 
 
+def test_reassigning_a_claimed_slot_cancels_the_previous_claimant():
+    game = GameUI()
+    unit_a, unit_b = game.units[0], game.units[1]
+
+    game._arm(unit_a.name, 0)
+    game._commit_action(clash_slot_index=0)
+    assert game.player_actions[unit_a.name].clash_slot_index == 0
+
+    game._arm(unit_b.name, 0)
+    game._commit_action(clash_slot_index=0)
+
+    assert unit_a.name not in game.player_actions, "previous claimant should be bumped back to unassigned"
+    assert game.player_actions[unit_b.name].clash_slot_index == 0
+    print("test_reassigning_a_claimed_slot_cancels_the_previous_claimant passed.")
+
+
+def test_only_one_unit_ever_claims_a_slot_at_a_time():
+    """Broader sanity check: no matter the order of commits, at most one
+    unit's action should ever reference any given clash slot index."""
+    game = GameUI()
+    for i, unit in enumerate(game.units):
+        game._arm(unit.name, 0)
+        game._commit_action(clash_slot_index=0)  # everyone tries to claim slot 0
+
+    slot_0_claimants = [
+        name for name, action in game.player_actions.items()
+        if action.clash_slot_index == 0
+    ]
+    assert len(slot_0_claimants) == 1, f"expected exactly 1 claimant of slot 0, got {slot_0_claimants}"
+    assert slot_0_claimants[0] == game.units[-1].name, "the most recent commit should be the one that sticks"
+    print("test_only_one_unit_ever_claims_a_slot_at_a_time passed.")
+
+
+def test_committing_to_a_different_slot_does_not_disturb_other_claims():
+    game = GameUI()
+    unit_a, unit_b = game.units[0], game.units[1]
+    game._arm(unit_a.name, 0)
+    game._commit_action(clash_slot_index=0)
+    game._arm(unit_b.name, 0)
+    game._commit_action(clash_slot_index=1)  # different slot, shouldn't touch unit_a's claim
+
+    assert game.player_actions[unit_a.name].clash_slot_index == 0
+    assert game.player_actions[unit_b.name].clash_slot_index == 1
+    print("test_committing_to_a_different_slot_does_not_disturb_other_claims passed.")
+
+
+def test_boss_slots_message_shown_when_staggered_entering_turn():
+    game = GameUI()
+    game.boss.is_staggered = True
+    game.boss.stagger_turns_left = 1
+    game.boss_slots = game.battle.boss_choose_turn()
+    assert game.boss_slots == []
+    game.draw()  # should not crash, and should not register any clash_slot clickables
+    clash_clickables = [c for c in game.clickables if c.payload[0] == "clash_slot"]
+    assert clash_clickables == []
+    print("test_boss_slots_message_shown_when_staggered_entering_turn passed.")
+
+
 if __name__ == "__main__":
     test_basic_flow()
     test_cancel_action()
@@ -446,4 +511,8 @@ if __name__ == "__main__":
     test_click_anywhere_advances_step_while_resolving()
     test_click_does_not_leak_through_to_normal_controls_while_resolving()
     test_banner_does_not_crash_for_each_step_kind()
+    test_reassigning_a_claimed_slot_cancels_the_previous_claimant()
+    test_only_one_unit_ever_claims_a_slot_at_a_time()
+    test_committing_to_a_different_slot_does_not_disturb_other_claims()
+    test_boss_slots_message_shown_when_staggered_entering_turn()
     print("\nALL TESTS PASSED")

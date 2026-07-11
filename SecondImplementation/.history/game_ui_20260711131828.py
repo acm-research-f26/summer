@@ -48,8 +48,6 @@ from engine import (
     effect_self_status_skill1, effect_self_status_skill2,
     effect_boss_tremor_slam, effect_boss_burn_wave, effect_boss_clash_baiter,
     effect_boss_scorch_point, effect_boss_amplitude_cascade,
-    passive_roll_bonus_tremor_scorch, passive_roll_bonus_dark_flame,
-    passive_roll_bonus_self_status, passive_damage_reduction_self_status,
 )
 
 # ----------------------------------------------------------------------------
@@ -109,62 +107,60 @@ def make_units():
     return [
         PlayerUnit(
             name="Thumb East Capo III",
-            max_hp=532,
+            max_hp=130,
             skill1=SkillDef(
-                "Tremor Jab", 13, 19, 25,
+                "Tremor Jab", 14, 20, 25,
                 description="Inflict 3 tremor potency and 2 tremor count. If tremor count "
-                            "is now more than 3, tremor burst once. Rolls 13-19. Base damage 25.",
+                            "is now more than 3, tremor burst once. Rolls 14-20. Base damage 25.",
                 effect=effect_tremor_scorch_skill1,
             ),
             skill2=SkillDef(
-                "Tremor Burst Strike", 9, 18, 50,
+                "Tremor Burst Strike", 10, 16, 50,
                 description="Inflict 2 tremor potency, perform tremor burst twice, and trigger "
                             "amplitude conversion of the tremor type to tremor scorch. "
-                            "Rolls 9-18. Base damage 50.",
+                            "Rolls 10-16. Base damage 50.",
                 effect=effect_tremor_scorch_skill2,
             ),
             passive_description="If opponent has +15 burn potency, roll +1.5 more (added to both "
                                  "lower and bigger bound). If opponent has +15 tremor potency, "
                                  "roll +1.5 more in the same way.",
-            stagger_thresholds=[213],
-            passive_roll_bonus_fn=passive_roll_bonus_tremor_scorch,
+            stagger_thresholds=[110],
         ),
         PlayerUnit(
             name="Lobotomy EGO: Magic Bullet",
-            max_hp=614,
+            max_hp=150,
             skill1=SkillDef(
-                "Flame Tag", 13, 19, 25,
+                "Flame Tag", 14, 20, 25,
                 description="Inflict burn equal to current magic bullets, then inflict 1 dark "
-                            "flame on target. Gain 2 magic bullets (max 7). Rolls 13-19. Base damage 25.",
+                            "flame on target. Gain 2 magic bullets (max 7). Rolls 14-20. Base damage 25.",
                 effect=effect_dark_flame_skill1,
             ),
             skill2=SkillDef(
-                "Dark Flame Surge", 9, 18, 50,
+                "Dark Flame Surge", 10, 16, 50,
                 description="Gain 1 magic bullet (max 7), then inflict dark flame equal to "
-                            "current magic bullets. Rolls 9-18. Base damage 50.",
+                            "current magic bullets. Rolls 10-16. Base damage 50.",
                 effect=effect_dark_flame_skill2,
             ),
             passive_description="If currently has 5+ magic bullets, roll +1.5 more (added to both "
                                  "lower and bigger bound). If opponent has +15 burn potency, "
                                  "roll +1.5 more (added to both lower and bigger bound).",
-            stagger_thresholds=[521, 338, 153],
+            stagger_thresholds=[160, 70, 30],
             max_magic_bullets=7,
-            passive_roll_bonus_fn=passive_roll_bonus_dark_flame,
         ),
         PlayerUnit(
             name="You Branch Adept",
-            max_hp=409,
+            max_hp=200,
             skill1=SkillDef(
-                "Shared Tremor", 13, 19, 25,
+                "Shared Tremor", 14, 20, 25,
                 description="Inflict 16 tremor potency and 8 tremor count on opponent, while "
-                            "applying 3 tremor count and 5 tremor potency to self. "
-                            "Rolls 13-19. Base damage 25.",
+                            "applying 1 tremor count and 5 tremor potency to self. "
+                            "Rolls 14-20. Base damage 25.",
                 effect=effect_self_status_skill1,
             ),
             skill2=SkillDef(
-                "Shared Burn", 9, 18, 50,
+                "Shared Burn", 10, 16, 50,
                 description="Inflict 10 burn potency and 5 burn count on self and target. Burn "
-                            "cannot cause HP to go below 1. Base damage is 50 + burn potency. Rolls 9-18.",
+                            "cannot cause HP to go below 1. Base damage is 50 + burn potency. Rolls 10-16.",
                 effect=effect_self_status_skill2,
             ),
             passive_description="If self has +10 tremor potency, roll +1.5 more and take 20% less "
@@ -172,9 +168,7 @@ def make_units():
                                  "20% less damage. Also, once per battle, if HP drops below zero "
                                  "(from any cause other than this unit's own self-burn), remove "
                                  "all burn and tremor on self and heal back to 80 HP.",
-            stagger_thresholds=[286, 143],
-            passive_roll_bonus_fn=passive_roll_bonus_self_status,
-            passive_damage_reduction_fn=passive_damage_reduction_self_status,
+            stagger_thresholds=[150, 50],
         ),
     ]
 
@@ -182,47 +176,43 @@ def make_units():
 def make_boss():
     skills = [
         BossSkillDef(
-            "Tremor Slam", 9, 18, 47,
+            "Tremor Slam", 12, 16, 15,
             description="On hit, inflict 5 tremor potency and 3 tremor count, then trigger "
-                        "tremor burst. Damage 47. Rolls 9-18.",
+                        "tremor burst. Damage 15. Rolls 12-16.",
             effect=effect_boss_tremor_slam,
         ),
         BossSkillDef(
-            "Burn Wave", 3, 17, 18, hits_all=True,
+            "Burn Wave", 10, 13, 10, hits_all=True,
             description="Hits ALL party members, inflicting 10 burn potency and 3 burn count "
-                        "on each. Damage 18 to all members. Rolls 3-17.",
+                        "on each. Damage 10 to all members. Rolls 10-13.",
             effect=effect_boss_burn_wave,
         ),
         BossSkillDef(
-            "Clash Baiter", 11, 15, 27,
-            description="If this attack is clashed by another skill, gain +5 to its roll "
-                        "and deal 10x damage if it wins the clash. Inflicts 3 tremor potency "
-                        "(and 3 tremor count, so it actually decays). "
-                        "Base damage 27. Rolls 11-15 (16-20 while being clashed).",
+            "Clash Baiter", 10, 14, 15,
+            description="If this attack is clashed by another skill, gain +5 base power to "
+                        "rolls and deal 900% more damage (not yet implemented). Inflicts 3 "
+                        "tremor potency. Base damage 15. Rolls 10-14.",
             effect=effect_boss_clash_baiter,
-            clash_roll_bonus=5,
-            clash_damage_multiplier=10.0,
         ),
         BossSkillDef(
-            "Scorch Point", 13, 18, 32,
-            description="Deal 10 burn potency (and 3 burn count, so it actually decays) to "
-                        "target. Base damage 32. Rolls 13-18.",
+            "Scorch Point", 15, 18, 15,
+            description="Deal 10 burn potency to target. Base damage 15. Rolls 15-18.",
             effect=effect_boss_scorch_point,
         ),
         BossSkillDef(
-            "Amplitude Cascade", 14, 18, 47, hits_all=True,
+            "Amplitude Cascade", 18, 20, 30, hits_all=True,
             description="Targets all enemies. Inflicts 1 tremor count and 1 tremor potency on "
                         "all, then bursts, while also triggering amplitude conversion into "
-                        "tremor scorch. Base damage 47. Rolls 14-18.",
+                        "tremor scorch. Base damage 30. Rolls 14-16.",
             effect=effect_boss_amplitude_cascade,
         ),
     ]
     return Boss(
-        name="Thumb East Capo II", max_hp=1450, skills=skills,
-        passive_description="Max HP 1450. Stagger thresholds at 1000 and 500. Picks 3 of its "
+        name="Boss", max_hp=1000, skills=skills,
+        passive_description="Max HP 1500. Stagger thresholds at 1000 and 500. Picks 3 of its "
                              "5 skills at random each turn, each with a random target, unless "
                              "manually overridden.",
-        stagger_thresholds=[1000, 500],
+        stagger_thresholds=[600, 300],
     )
 
 
@@ -410,15 +400,6 @@ class GameUI:
         unit_name, position = self.armed
         unit = self.battle.get_unit(unit_name)
         skill_type = unit.queue.available[position]
-
-        if clash_slot_index is not None:
-            # Only one unit may clash a given boss slot at a time. If another
-            # unit already claimed it, bump them back to "no action yet" -
-            # they'll need to pick a new target themselves.
-            for other_name, other_action in list(self.player_actions.items()):
-                if other_name != unit_name and other_action.clash_slot_index == clash_slot_index:
-                    del self.player_actions[other_name]
-
         self.player_actions[unit_name] = PlayerAction(
             unit_name, skill_type, clash_slot_index, armed_position=position
         )
@@ -431,7 +412,7 @@ class GameUI:
             self.armed = None
 
     def _start_turn(self):
-        if not self._all_actions_ready() or not self.boss.is_alive() or not self.battle.alive_units():
+        if not self._all_actions_ready() or not self.boss.is_alive():
             return
         actions = list(self.player_actions.values())
         self.resolving_step_iter = self.battle.resolve_turn_steps(self.boss_slots, actions)
@@ -534,24 +515,12 @@ class GameUI:
 
         if step.kind == "clash":
             clasher = step.participants[1]
-            if step.boss_roll is None and step.winner == "player":
-                text = (f"BOSS is STAGGERED and can't contest — {clasher}'s "
-                         f"{step.player_skill_name} goes through automatically!")
-            elif step.boss_roll is None and step.winner == "boss":
-                text = (f"{clasher} is STAGGERED and can't contest — Boss's "
-                         f"{step.boss_skill_name} lands unopposed!")
-            else:
-                winner_text = "Player wins!" if step.winner == "player" else "Boss wins!"
-                text = (f"CLASH — Boss's {step.boss_skill_name} rolled {step.boss_roll}  vs  "
-                         f"{clasher}'s {step.player_skill_name} rolled {step.player_roll}  →  {winner_text}")
-                if step.fizzled:
-                    text += "  (but BOSS is STAGGERED — its attack fizzles!)"
+            winner_text = "Player wins!" if step.winner == "player" else "Boss wins!"
+            text = (f"CLASH — Boss's {step.boss_skill_name} rolled {step.boss_roll}  vs  "
+                     f"{clasher}'s {step.player_skill_name} rolled {step.player_roll}  →  {winner_text}")
         elif step.kind == "boss_unopposed":
             targets = ", ".join(step.participants[1:])
-            if step.fizzled:
-                text = f"BOSS is STAGGERED — {step.boss_skill_name} fizzles, no attack lands!"
-            else:
-                text = f"BOSS uses {step.boss_skill_name} unopposed on {targets}"
+            text = f"BOSS uses {step.boss_skill_name} unopposed on {targets}"
         elif step.kind == "player_unopposed":
             text = f"{step.participants[0]} attacks unopposed!"
         elif step.kind == "turn_end":
@@ -713,22 +682,6 @@ class GameUI:
         total_w = slot_w * 3 + gap * 2
         start_x = (SCREEN_W - total_w) // 2
 
-        if not self.boss_slots:
-            # boss_slots can be empty for three different reasons - show the
-            # right message for each rather than always assuming staggered.
-            if not self.boss.is_alive():
-                text, ring_color, text_color = "BOSS DEFEATED — victory!", (255, 220, 80), (255, 220, 80)
-            elif not self.battle.alive_units():
-                text, ring_color, text_color = "YOUR PARTY HAS BEEN DEFEATED", (220, 80, 80), (220, 80, 80)
-            else:
-                text = "BOSS is STAGGERED — no skills this turn"
-                ring_color, text_color = COLOR_STAGGERED_RING, COLOR_STAGGERED_TEXT
-            msg_rect = pygame.Rect(start_x, y, total_w, slot_h)
-            pygame.draw.rect(self.screen, COLOR_SLOT_BG, msg_rect, border_radius=8)
-            pygame.draw.rect(self.screen, ring_color, msg_rect, 2, border_radius=8)
-            draw_text(self.screen, self.font, text, msg_rect.center, center=True, color=text_color)
-            return
-
         claimed = self._claimed_slot_indices()
 
         for i, slot in enumerate(self.boss_slots):
@@ -743,10 +696,6 @@ class GameUI:
 
             skill_label = f"{slot.skill_def.name}"
             roll_label = f"roll {slot.skill_def.roll_lo}-{slot.skill_def.roll_hi}   dmg {slot.skill_def.base_damage}"
-            if slot.skill_def.clash_roll_bonus:
-                boosted_lo = slot.skill_def.roll_lo + slot.skill_def.clash_roll_bonus
-                boosted_hi = slot.skill_def.roll_hi + slot.skill_def.clash_roll_bonus
-                roll_label += f"  (+{slot.skill_def.clash_roll_bonus}={boosted_lo}-{boosted_hi} if clashed!)"
             target_label = "ALL" if slot.skill_def.hits_all else ", ".join(slot.target_names)
 
             skill_rect = draw_text(self.screen, self.font, skill_label, (x + 12, y + 6))
@@ -894,7 +843,7 @@ class GameUI:
             draw_text(self.screen, self.font_small, line, (30, panel_y + 6 + i * 15), color=COLOR_DIM_TEXT)
 
     def _draw_start_button(self):
-        ready = self._all_actions_ready() and self.boss.is_alive() and bool(self.battle.alive_units())
+        ready = self._all_actions_ready() and self.boss.is_alive()
         rect = pygame.Rect(SCREEN_W - 180, 12, 160, 38)
         color = COLOR_BUTTON if ready else COLOR_BUTTON_OFF
         pygame.draw.rect(self.screen, color, rect, border_radius=6)
@@ -904,8 +853,6 @@ class GameUI:
 
         if not self.boss.is_alive():
             draw_text(self.screen, self.font_big, "BOSS DEFEATED", (SCREEN_W // 2, 250), center=True, color=(255, 220, 80))
-        elif not self.battle.alive_units():
-            draw_text(self.screen, self.font_big, "PARTY DEFEATED", (SCREEN_W // 2, 250), center=True, color=(220, 80, 80))
 
     # ---------------- event handling ----------------
 

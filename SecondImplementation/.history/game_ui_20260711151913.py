@@ -55,7 +55,7 @@ from engine import (
 # ----------------------------------------------------------------------------
 # CONFIG
 # ----------------------------------------------------------------------------
-MANUAL_BOSS_MODE = True  # <-- the bool toggle. Can also be flipped in-app via checkbox.
+MANUAL_BOSS_MODE = False  # <-- the bool toggle. Can also be flipped in-app via checkbox.
 
 SCREEN_W, SCREEN_H = 1500, 720
 
@@ -157,7 +157,7 @@ def make_units():
             skill1=SkillDef(
                 "Shared Tremor", 13, 19, 25,
                 description="Inflict 16 tremor potency and 8 tremor count on opponent, while "
-                            "applying 3 tremor count and 5 tremor potency to self. "
+                            "applying 1 tremor count and 5 tremor potency to self. "
                             "Rolls 13-19. Base damage 25.",
                 effect=effect_self_status_skill1,
             ),
@@ -534,12 +534,9 @@ class GameUI:
 
         if step.kind == "clash":
             clasher = step.participants[1]
-            if step.boss_roll is None and step.winner == "player":
+            if step.boss_roll is None:
                 text = (f"BOSS is STAGGERED and can't contest — {clasher}'s "
                          f"{step.player_skill_name} goes through automatically!")
-            elif step.boss_roll is None and step.winner == "boss":
-                text = (f"{clasher} is STAGGERED and can't contest — Boss's "
-                         f"{step.boss_skill_name} lands unopposed!")
             else:
                 winner_text = "Player wins!" if step.winner == "player" else "Boss wins!"
                 text = (f"CLASH — Boss's {step.boss_skill_name} rolled {step.boss_roll}  vs  "
