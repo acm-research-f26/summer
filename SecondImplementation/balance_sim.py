@@ -12,7 +12,8 @@ The AI, each turn:
   2. For every living, non-staggered unit and each of its 2 currently
      available skills, computes an exact win probability against each boss
      slot from the roll ranges (brute-force over all integer roll pairs,
-     conditioning out ties the same way the engine's reroll-on-tie does).
+     conditioning out ties the same way the engine's reroll-on-tie does),
+     including each unit's own passive roll bonus where applicable.
   3. Brute-forces every valid (unit -> {slot0, slot1, slot2, unopposed})
      assignment (small search space, trivially fast) and picks the one that
      maximizes expected (damage dealt to boss) - (expected damage taken),
@@ -20,113 +21,29 @@ The AI, each turn:
 
 Status effect magnitudes (tremor/burn/dark flame potencies & counts) are left
 exactly as designed; only HP, stagger thresholds, base damage, and roll
-ranges are tunable knobs here.
+ranges are tunable knobs here - see game_data.py, the single source of truth
+for those numbers (also used by the real shipped game in game_ui.py, so
+tuning experiments here and what actually ships can never drift apart).
 """
 
 import random
 import itertools
-from engine import (
-    PlayerUnit, SkillDef, Boss, BossSkillDef, Battle, PlayerAction,
-    effect_tremor_scorch_skill1, effect_tremor_scorch_skill2,
-    effect_dark_flame_skill1, effect_dark_flame_skill2,
-    effect_self_status_skill1, effect_self_status_skill2,
-    effect_boss_tremor_slam, effect_boss_burn_wave, effect_boss_clash_baiter,
-    effect_boss_scorch_point, effect_boss_amplitude_cascade,
-    passive_roll_bonus_tremor_scorch, passive_roll_bonus_dark_flame,
-    passive_roll_bonus_self_status, passive_damage_reduction_self_status,
-)
 
+from engine import Battle, PlayerAction
+from game_data import PARAMS as DEFAULT_PARAMS, build_party_units, build_boss
 
-# ----------------------------------------------------------------------------
-# Tunable parameter set. Everything the balance pass is allowed to touch.
-# Status effect potency/count numbers are NOT here on purpose - those stay fixed.
-# ----------------------------------------------------------------------------
-DEFAULT_PARAMS = {
-    # Roll ranges chosen to hit specific target clash win-probabilities against
-    # each boss skill, with NO matchup ever a guaranteed win or loss for either
-    # side. Clash Baiter keeps its original roll range but has a real +5 roll /
-    # 10x damage bonus that applies only while it's being clashed
-    # (clash_roll_bonus/clash_damage_multiplier - previously described but not
-    # actually implemented). Damage scaled up ~1.5x for bigger, more
-    # "respectable" hits, with HP raised slightly to compensate and keep the
-    # same overall win-rate target. Measured: skilled ~82-85% win rate at
-    # ~8.4 turns to win; naive (never clashes, never uses skill2) ~2-3%.
-    "tremor_scorch": {
-        "hp": 532, "stagger": [213],
-        "skill1_dmg": 25, "skill1_roll": (13, 19),
-        "skill2_dmg": 50, "skill2_roll": (9, 18),
-    },
-    "dark_flame": {
-        "hp": 614, "stagger": [521, 338, 153],
-        "skill1_dmg": 25, "skill1_roll": (13, 19),
-        "skill2_dmg": 50, "skill2_roll": (9, 18),
-    },
-    "self_status": {
-        "hp": 409, "stagger": [286, 143],
-        "skill1_dmg": 25, "skill1_roll": (13, 19),
-        "skill2_dmg": 50, "skill2_roll": (9, 18),
-    },
-    "boss": {
-        "hp": 1450, "stagger": [1000, 500],
-        "skills": [
-            # (name, dmg, roll, hits_all, clash_roll_bonus, clash_damage_multiplier)
-            # Damage re-tuned upward after the three party passives (roll bonus /
-            # damage reduction from tremor/burn/bullet stacks) were actually
-            # implemented, since they'd meaningfully favored the player and
-            # pushed skilled win rate well above the ~80% target.
-            ("Tremor Slam", 47, (9, 18), False, 0, 1.0),
-            ("Burn Wave", 18, (3, 17), True, 0, 1.0),
-            ("Clash Baiter", 27, (11, 15), False, 5, 10.0),
-            ("Scorch Point", 32, (13, 18), False, 0, 1.0),
-            ("Amplitude Cascade", 47, (14, 18), True, 0, 1.0),
-        ],
-    },
+# Plain archetype names for these throwaway simulation runs, instead of the
+# flavor names the shipped game uses.
+_SIM_NAMES = {
+    "tremor_scorch": "TremorScorch",
+    "dark_flame": "DarkFlameInflictor",
+    "self_status": "BurnTremorInflictor",
 }
 
 
 def make_battle(params, rng):
-    p = params
-    tremor_scorch = PlayerUnit(
-        name="TremorScorch", max_hp=p["tremor_scorch"]["hp"],
-        skill1=SkillDef("Tremor Jab", *p["tremor_scorch"]["skill1_roll"], p["tremor_scorch"]["skill1_dmg"],
-                        effect=effect_tremor_scorch_skill1),
-        skill2=SkillDef("Tremor Burst Strike", *p["tremor_scorch"]["skill2_roll"], p["tremor_scorch"]["skill2_dmg"],
-                        effect=effect_tremor_scorch_skill2),
-        stagger_thresholds=list(p["tremor_scorch"]["stagger"]),
-        passive_roll_bonus_fn=passive_roll_bonus_tremor_scorch,
-    )
-    dark_flame = PlayerUnit(
-        name="DarkFlameInflictor", max_hp=p["dark_flame"]["hp"],
-        skill1=SkillDef("Flame Tag", *p["dark_flame"]["skill1_roll"], p["dark_flame"]["skill1_dmg"],
-                        effect=effect_dark_flame_skill1),
-        skill2=SkillDef("Dark Flame Surge", *p["dark_flame"]["skill2_roll"], p["dark_flame"]["skill2_dmg"],
-                        effect=effect_dark_flame_skill2),
-        stagger_thresholds=list(p["dark_flame"]["stagger"]),
-        max_magic_bullets=7,
-        passive_roll_bonus_fn=passive_roll_bonus_dark_flame,
-    )
-    self_status = PlayerUnit(
-        name="BurnTremorInflictor", max_hp=p["self_status"]["hp"],
-        skill1=SkillDef("Shared Tremor", *p["self_status"]["skill1_roll"], p["self_status"]["skill1_dmg"],
-                        effect=effect_self_status_skill1),
-        skill2=SkillDef("Shared Burn", *p["self_status"]["skill2_roll"], p["self_status"]["skill2_dmg"],
-                        effect=effect_self_status_skill2),
-        stagger_thresholds=list(p["self_status"]["stagger"]),
-        passive_roll_bonus_fn=passive_roll_bonus_self_status,
-        passive_damage_reduction_fn=passive_damage_reduction_self_status,
-    )
-    units = [tremor_scorch, dark_flame, self_status]
-
-    effect_fns = [effect_boss_tremor_slam, effect_boss_burn_wave, effect_boss_clash_baiter,
-                  effect_boss_scorch_point, effect_boss_amplitude_cascade]
-    boss_skills = [
-        BossSkillDef(name, roll[0], roll[1], dmg, hits_all=hits_all, effect=fn,
-                     clash_roll_bonus=bonus, clash_damage_multiplier=mult)
-        for (name, dmg, roll, hits_all, bonus, mult), fn in zip(p["boss"]["skills"], effect_fns)
-    ]
-    boss = Boss(name="Boss", max_hp=p["boss"]["hp"], skills=boss_skills,
-                stagger_thresholds=list(p["boss"]["stagger"]))
-
+    units = build_party_units(params, names=_SIM_NAMES)
+    boss = build_boss(params, name="Boss")
     battle = Battle(boss, units, rng=rng)
     return battle, units, boss
 

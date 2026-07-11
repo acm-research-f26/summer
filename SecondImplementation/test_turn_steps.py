@@ -292,6 +292,44 @@ def test_boss_choose_turn_does_not_crash_when_both_wiped_simultaneously():
     print("test_boss_choose_turn_does_not_crash_when_both_wiped_simultaneously passed.")
 
 
+def test_clash_auto_resolves_in_bosss_favor_when_clashing_player_is_staggered():
+    """
+    Symmetric to the boss-staggered case: if the CLASHING PLAYER becomes
+    staggered mid-turn (from an earlier boss slot in the same turn) before
+    their own pre-committed clash resolves, the boss's attack should land in
+    full on its original target - not get wrongly discarded just because the
+    player's roll happened to beat the boss's roll number.
+    """
+    units = make_units()
+    boss = make_boss()
+    battle = Battle(boss, units, rng=random.Random(1))
+
+    # give unit A a low stagger threshold so an early hit staggers them
+    units[0].stagger_thresholds = [80]
+    units[0].passed_thresholds = set()
+
+    early_hit = BossSkillDef("EarlyHit", 15, 15, 30)
+    late_hit = BossSkillDef("LateHit", 5, 5, 20)  # guaranteed loss vs a 14-20 skill roll if it were a real clash
+    slots = [
+        PlannedBossSkill(early_hit, ["A"]),
+        PlannedBossSkill(late_hit, ["A"]),
+    ]
+    action = PlayerAction("A", units[0].queue.available[0], clash_slot_index=1, armed_position=0)
+
+    boss_hp_before = boss.hp
+    a_hp_before = units[0].hp
+
+    steps = list(battle.resolve_turn_steps(slots, [action]))
+    clash_step = next(s for s in steps if s.kind == "clash")
+
+    assert clash_step.winner == "boss"
+    assert clash_step.boss_roll is None
+    assert clash_step.player_roll is None
+    assert boss.hp == boss_hp_before, "player's action should not have landed on the boss at all"
+    assert units[0].hp < a_hp_before - 30, "boss's second hit should have landed too (staggered damage on top of the first)"
+    print("test_clash_auto_resolves_in_bosss_favor_when_clashing_player_is_staggered passed.")
+
+
 if __name__ == "__main__":
     test_steps_cover_all_boss_slots_and_unopposed_actions()
     test_clash_step_has_roll_and_winner_info()
@@ -308,4 +346,5 @@ if __name__ == "__main__":
     test_boss_choose_turn_returns_empty_when_boss_dead()
     test_boss_choose_turn_returns_empty_when_party_wiped()
     test_boss_choose_turn_does_not_crash_when_both_wiped_simultaneously()
+    test_clash_auto_resolves_in_bosss_favor_when_clashing_player_is_staggered()
     print("\nALL TURN STEP TESTS PASSED")

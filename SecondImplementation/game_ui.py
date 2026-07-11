@@ -41,16 +41,8 @@ import os
 import random
 import pygame
 
-from engine import (
-    PlayerUnit, SkillDef, Boss, BossSkillDef, Battle, PlayerAction,
-    effect_tremor_scorch_skill1, effect_tremor_scorch_skill2,
-    effect_dark_flame_skill1, effect_dark_flame_skill2,
-    effect_self_status_skill1, effect_self_status_skill2,
-    effect_boss_tremor_slam, effect_boss_burn_wave, effect_boss_clash_baiter,
-    effect_boss_scorch_point, effect_boss_amplitude_cascade,
-    passive_roll_bonus_tremor_scorch, passive_roll_bonus_dark_flame,
-    passive_roll_bonus_self_status, passive_damage_reduction_self_status,
-)
+from engine import Battle, PlayerAction
+from game_data import build_party_units, build_boss
 
 # ----------------------------------------------------------------------------
 # CONFIG
@@ -105,125 +97,19 @@ FONT_NAME = None  # default pygame font
 # GAME DATA — includes full effect text (even not-yet-implemented status
 # effects) so tooltips can show the complete design intent.
 # ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# GAME DATA
+#
+# All the actual numbers (HP, stagger, damage, roll ranges) and description
+# text live in game_data.py, shared with balance_sim.py so the two can never
+# drift out of sync. These are just thin wrappers for game_ui's own use.
+# ----------------------------------------------------------------------------
 def make_units():
-    return [
-        PlayerUnit(
-            name="Thumb East Capo III",
-            max_hp=532,
-            skill1=SkillDef(
-                "Tremor Jab", 13, 19, 25,
-                description="Inflict 3 tremor potency and 2 tremor count. If tremor count "
-                            "is now more than 3, tremor burst once. Rolls 13-19. Base damage 25.",
-                effect=effect_tremor_scorch_skill1,
-            ),
-            skill2=SkillDef(
-                "Tremor Burst Strike", 9, 18, 50,
-                description="Inflict 2 tremor potency, perform tremor burst twice, and trigger "
-                            "amplitude conversion of the tremor type to tremor scorch. "
-                            "Rolls 9-18. Base damage 50.",
-                effect=effect_tremor_scorch_skill2,
-            ),
-            passive_description="If opponent has +15 burn potency, roll +1.5 more (added to both "
-                                 "lower and bigger bound). If opponent has +15 tremor potency, "
-                                 "roll +1.5 more in the same way.",
-            stagger_thresholds=[213],
-            passive_roll_bonus_fn=passive_roll_bonus_tremor_scorch,
-        ),
-        PlayerUnit(
-            name="Lobotomy EGO: Magic Bullet",
-            max_hp=614,
-            skill1=SkillDef(
-                "Flame Tag", 13, 19, 25,
-                description="Inflict burn equal to current magic bullets, then inflict 1 dark "
-                            "flame on target. Gain 2 magic bullets (max 7). Rolls 13-19. Base damage 25.",
-                effect=effect_dark_flame_skill1,
-            ),
-            skill2=SkillDef(
-                "Dark Flame Surge", 9, 18, 50,
-                description="Gain 1 magic bullet (max 7), then inflict dark flame equal to "
-                            "current magic bullets. Rolls 9-18. Base damage 50.",
-                effect=effect_dark_flame_skill2,
-            ),
-            passive_description="If currently has 5+ magic bullets, roll +1.5 more (added to both "
-                                 "lower and bigger bound). If opponent has +15 burn potency, "
-                                 "roll +1.5 more (added to both lower and bigger bound).",
-            stagger_thresholds=[521, 338, 153],
-            max_magic_bullets=7,
-            passive_roll_bonus_fn=passive_roll_bonus_dark_flame,
-        ),
-        PlayerUnit(
-            name="You Branch Adept",
-            max_hp=409,
-            skill1=SkillDef(
-                "Shared Tremor", 13, 19, 25,
-                description="Inflict 16 tremor potency and 8 tremor count on opponent, while "
-                            "applying 3 tremor count and 5 tremor potency to self. "
-                            "Rolls 13-19. Base damage 25.",
-                effect=effect_self_status_skill1,
-            ),
-            skill2=SkillDef(
-                "Shared Burn", 9, 18, 50,
-                description="Inflict 10 burn potency and 5 burn count on self and target. Burn "
-                            "cannot cause HP to go below 1. Base damage is 50 + burn potency. Rolls 9-18.",
-                effect=effect_self_status_skill2,
-            ),
-            passive_description="If self has +10 tremor potency, roll +1.5 more and take 20% less "
-                                 "damage. If self has +15 burn potency, roll +1.5 more and take "
-                                 "20% less damage. Also, once per battle, if HP drops below zero "
-                                 "(from any cause other than this unit's own self-burn), remove "
-                                 "all burn and tremor on self and heal back to 80 HP.",
-            stagger_thresholds=[286, 143],
-            passive_roll_bonus_fn=passive_roll_bonus_self_status,
-            passive_damage_reduction_fn=passive_damage_reduction_self_status,
-        ),
-    ]
+    return build_party_units()
 
 
 def make_boss():
-    skills = [
-        BossSkillDef(
-            "Tremor Slam", 9, 18, 47,
-            description="On hit, inflict 5 tremor potency and 3 tremor count, then trigger "
-                        "tremor burst. Damage 47. Rolls 9-18.",
-            effect=effect_boss_tremor_slam,
-        ),
-        BossSkillDef(
-            "Burn Wave", 3, 17, 18, hits_all=True,
-            description="Hits ALL party members, inflicting 10 burn potency and 3 burn count "
-                        "on each. Damage 18 to all members. Rolls 3-17.",
-            effect=effect_boss_burn_wave,
-        ),
-        BossSkillDef(
-            "Clash Baiter", 11, 15, 27,
-            description="If this attack is clashed by another skill, gain +5 to its roll "
-                        "and deal 10x damage if it wins the clash. Inflicts 3 tremor potency "
-                        "(and 3 tremor count, so it actually decays). "
-                        "Base damage 27. Rolls 11-15 (16-20 while being clashed).",
-            effect=effect_boss_clash_baiter,
-            clash_roll_bonus=5,
-            clash_damage_multiplier=10.0,
-        ),
-        BossSkillDef(
-            "Scorch Point", 13, 18, 32,
-            description="Deal 10 burn potency (and 3 burn count, so it actually decays) to "
-                        "target. Base damage 32. Rolls 13-18.",
-            effect=effect_boss_scorch_point,
-        ),
-        BossSkillDef(
-            "Amplitude Cascade", 14, 18, 47, hits_all=True,
-            description="Targets all enemies. Inflicts 1 tremor count and 1 tremor potency on "
-                        "all, then bursts, while also triggering amplitude conversion into "
-                        "tremor scorch. Base damage 47. Rolls 14-18.",
-            effect=effect_boss_amplitude_cascade,
-        ),
-    ]
-    return Boss(
-        name="Thumb East Capo II", max_hp=1450, skills=skills,
-        passive_description="Max HP 1450. Stagger thresholds at 1000 and 500. Picks 3 of its "
-                             "5 skills at random each turn, each with a random target, unless "
-                             "manually overridden.",
-        stagger_thresholds=[1000, 500],
-    )
+    return build_boss()
 
 
 # ----------------------------------------------------------------------------
