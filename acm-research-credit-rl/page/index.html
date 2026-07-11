@@ -1,0 +1,1180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HiPER: Hierarchical Reinforcement Learning for LLM Agents</title>
+    <meta
+      name="description"
+      content="HiPER is a hierarchical reinforcement learning framework with explicit credit assignment for long-horizon large language model agents."
+    >
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="HiPER: Hierarchical Reinforcement Learning for LLM Agents">
+    <meta property="og:description" content="HiPER trains long-horizon LLM agents with explicit Plan-Execute structure and Hierarchical Advantage Estimation.">
+    <meta property="og:image" content="assets/header_plot.png">
+    <meta property="og:url" content="https://jonp07.github.io/HiPER-agent/">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="HiPER: Hierarchical Reinforcement Learning for LLM Agents">
+    <meta name="twitter:description" content="Explicit credit assignment for long-horizon LLM agents through Plan-Execute RL and HAE.">
+    <meta name="twitter:image" content="assets/header_plot.png">
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f8f9fb;
+        --paper: #ffffff;
+        --ink: #131722;
+        --muted: #5f6675;
+        --soft: #eef1f5;
+        --line: #d9dee8;
+        --blue: #2457a6;
+        --red: #b42318;
+        --green: #2f6f55;
+        --purple: #6b55a3;
+        --shadow: 0 18px 45px rgba(21, 31, 52, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        line-height: 1.62;
+      }
+
+      a {
+        color: var(--blue);
+      }
+
+      img {
+        display: block;
+        max-width: 100%;
+      }
+
+      .nav-inner,
+      .hero,
+      .section,
+      .footer-inner {
+        width: min(1060px, calc(100% - 36px));
+        margin: 0 auto;
+      }
+
+      .top-nav {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        border-bottom: 1px solid rgba(217, 222, 232, 0.92);
+        background: rgba(248, 249, 251, 0.92);
+        backdrop-filter: blur(14px);
+      }
+
+      .nav-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        min-height: 58px;
+      }
+
+      .brand {
+        color: var(--ink);
+        font-size: 0.98rem;
+        font-weight: 780;
+        text-decoration: none;
+      }
+
+      .brand-row {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+      }
+
+      .construction-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        border: 1px solid #e7c777;
+        border-radius: 999px;
+        padding: 0.18rem 0.55rem;
+        background: #fff7dc;
+        color: #7a5610;
+        font-size: 0.74rem;
+        font-weight: 820;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .nav-links {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.35rem;
+        font-size: 0.92rem;
+      }
+
+      .nav-links a {
+        border-radius: 999px;
+        padding: 0.42rem 0.66rem;
+        color: #394154;
+        text-decoration: none;
+      }
+
+      .nav-links a:hover,
+      .nav-links a:focus-visible {
+        background: var(--soft);
+        color: var(--ink);
+        outline: none;
+      }
+
+      .hero {
+        padding: 72px 0 46px;
+        text-align: center;
+      }
+
+      .venue {
+        margin: 0 0 0.9rem;
+        color: var(--red);
+        font-size: 0.82rem;
+        font-weight: 820;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        max-width: 980px;
+        margin: 0 auto 1.15rem;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(2rem, 4.8vw, 3.8rem);
+        font-weight: 680;
+        letter-spacing: 0;
+        line-height: 1.08;
+      }
+
+      .subtitle {
+        max-width: 830px;
+        margin: 0 auto 1.25rem;
+        color: #344050;
+        font-size: clamp(1.05rem, 2vw, 1.34rem);
+      }
+
+      .authors {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.25rem 0.8rem;
+        max-width: 880px;
+        margin: 0 auto 1.35rem;
+        color: #3b4251;
+        font-size: 1rem;
+      }
+
+      .authors span {
+        white-space: nowrap;
+      }
+
+      .link-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.68rem;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.58rem 0.92rem;
+        background: var(--paper);
+        color: var(--ink);
+        font-weight: 740;
+        text-decoration: none;
+        box-shadow: 0 8px 22px rgba(21, 31, 52, 0.05);
+      }
+
+      .pill:hover,
+      .pill:focus-visible {
+        border-color: #b9c3d3;
+        box-shadow: 0 10px 26px rgba(21, 31, 52, 0.1);
+        outline: none;
+        transform: translateY(-1px);
+      }
+
+      main {
+        display: grid;
+        gap: 44px;
+        padding-bottom: 64px;
+      }
+
+      .section {
+        scroll-margin-top: 84px;
+      }
+
+      .paper-block {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .intro-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(280px, 0.72fr);
+        gap: 2rem;
+        align-items: start;
+        padding: 30px;
+      }
+
+      .overview-kicker {
+        margin-bottom: 0.65rem;
+        color: var(--red);
+        font-size: 0.78rem;
+        font-weight: 820;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .overview-lead {
+        margin-bottom: 1rem;
+        color: #2f3848;
+        font-size: clamp(1.16rem, 2vw, 1.42rem);
+        line-height: 1.34;
+      }
+
+      .overview-takeaway {
+        margin: 1.15rem 0 0;
+        border-left: 4px solid var(--red);
+        padding-left: 1rem;
+        color: var(--muted);
+      }
+
+      .overview-points {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .overview-point {
+        border-top: 1px solid var(--line);
+        padding-top: 1rem;
+      }
+
+      .overview-point:first-child {
+        border-top: 0;
+        padding-top: 0;
+      }
+
+      .overview-point span {
+        display: inline-flex;
+        margin-bottom: 0.35rem;
+        color: var(--blue);
+        font-size: 0.75rem;
+        font-weight: 820;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .overview-point h3 {
+        margin-bottom: 0.35rem;
+        font-size: 1.08rem;
+        line-height: 1.24;
+      }
+
+      .overview-point p {
+        margin-bottom: 0;
+        color: var(--muted);
+      }
+
+      h2 {
+        margin-bottom: 1rem;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(1.9rem, 3.6vw, 3rem);
+        font-weight: 680;
+        letter-spacing: 0;
+        line-height: 1.05;
+      }
+
+      .section-lede {
+        max-width: 760px;
+        margin-bottom: 1.35rem;
+        color: var(--muted);
+        font-size: 1.04rem;
+      }
+
+      .performance-figure {
+        margin: 0;
+      }
+
+      .performance-figure img {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .approach-panel {
+        display: grid;
+        gap: 1.1rem;
+        padding: 22px;
+      }
+
+      .approach-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 1rem;
+        background: #fbfcfe;
+      }
+
+      .approach-copy p {
+        margin-bottom: 0;
+        color: #3c4556;
+      }
+
+      .method-list {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .method-step {
+        display: grid;
+        grid-template-columns: 3.7rem minmax(0, 1fr);
+        gap: 0.9rem;
+        align-items: start;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0.9rem;
+        background: #fbfcfe;
+      }
+
+      .label {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.15rem;
+        margin-bottom: 0;
+        border-radius: 999px;
+        background: rgba(180, 35, 24, 0.08);
+        color: var(--red);
+        font-size: 0.78rem;
+        font-weight: 820;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .method-step h3 {
+        margin-bottom: 0.25rem;
+        font-size: 1.13rem;
+        line-height: 1.25;
+      }
+
+      .method-step p {
+        margin-bottom: 0;
+        color: var(--muted);
+      }
+
+      .approach-figure {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        margin: 0;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .approach-png {
+        width: 100%;
+        background: #fff;
+      }
+
+      .trajectory-shell {
+        padding: 22px;
+      }
+
+      .trajectory-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+        margin-bottom: 1rem;
+      }
+
+      .trajectory-tab {
+        min-height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.48rem 0.8rem;
+        background: #fff;
+        color: #394154;
+        font: inherit;
+        font-size: 0.92rem;
+        font-weight: 740;
+        cursor: pointer;
+      }
+
+      .trajectory-tab.is-active,
+      .trajectory-tab:hover,
+      .trajectory-tab:focus-visible {
+        border-color: rgba(180, 35, 24, 0.32);
+        background: rgba(180, 35, 24, 0.08);
+        color: var(--red);
+        outline: none;
+      }
+
+      .trajectory-view {
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      .trajectory-title {
+        margin-bottom: 0.1rem;
+        font-size: 1.2rem;
+      }
+
+      .trajectory-groups {
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      .trajectory-group {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .trajectory-group-header {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        gap: 0.75rem;
+        align-items: center;
+        width: 100%;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        padding: 0.75rem 0.9rem;
+        background: #fbfcfe;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .trajectory-group-header:hover,
+      .trajectory-group-header:focus-visible {
+        background: #eef4ff;
+        outline: none;
+      }
+
+      .trajectory-chevron {
+        color: var(--muted);
+        font-size: 1.1rem;
+        line-height: 1;
+      }
+
+      .trajectory-group:not(.is-open) .trajectory-steps {
+        display: none;
+      }
+
+      .trajectory-range,
+      .trajectory-range {
+        background: rgba(36, 87, 166, 0.09);
+        color: var(--blue);
+      }
+
+      .trajectory-subgoal {
+        margin: 0;
+        font-size: 1rem;
+        font-family: inherit;
+        line-height: 1.32;
+      }
+
+      .trajectory-steps {
+        display: grid;
+        gap: 0.72rem;
+        padding: 0.85rem;
+      }
+
+      .trajectory-step-row {
+        display: grid;
+        grid-template-columns: 4.5rem minmax(0, 1fr) minmax(0, 1fr);
+        gap: 0.65rem;
+        align-items: stretch;
+      }
+
+      .trajectory-step-label {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        border-radius: 8px;
+        padding: 0.62rem 0.3rem;
+        background: #eef1f5;
+        color: #4c5566;
+        font-size: 0.82rem;
+        font-weight: 820;
+      }
+
+      .trajectory-block {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .trajectory-block.agent {
+        border-color: rgba(36, 87, 166, 0.24);
+      }
+
+      .trajectory-block.env {
+        border-color: rgba(180, 35, 24, 0.22);
+      }
+
+      .trajectory-block h4 {
+        margin: 0;
+        border-bottom: 1px solid var(--line);
+        padding: 0.42rem 0.62rem;
+        background: #fbfcfe;
+        font-size: 0.78rem;
+        font-family: inherit;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .trajectory-block.env h4 {
+        color: var(--red);
+      }
+
+      .trajectory-block.agent h4 {
+        color: var(--blue);
+      }
+
+      .trajectory-text {
+        margin: 0;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        padding: 0.65rem;
+        background: #fff;
+        color: #2f3848;
+        font-family:
+          "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        font-size: 0.79rem;
+        line-height: 1.46;
+      }
+
+      .trajectory-note {
+        margin-top: 0.9rem;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .bibtex-card {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .bibtex-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border-bottom: 1px solid var(--line);
+        padding: 0.78rem 0.95rem;
+        background: #fbfcfe;
+      }
+
+      .bibtex-header h3 {
+        margin: 0;
+        font-size: 0.98rem;
+        font-family: inherit;
+      }
+
+      .copy-button {
+        min-height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 0.38rem 0.72rem;
+        background: #fff;
+        color: var(--ink);
+        font: inherit;
+        font-size: 0.86rem;
+        font-weight: 760;
+        cursor: pointer;
+      }
+
+      .copy-button:hover,
+      .copy-button:focus-visible {
+        border-color: rgba(36, 87, 166, 0.35);
+        background: #eef4ff;
+        outline: none;
+      }
+
+      .bibtex {
+        border-radius: 0;
+        padding: 1rem 1.15rem 1rem 1.35rem;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font-size: 0.78rem;
+      }
+
+      .footer {
+        border-top: 1px solid var(--line);
+        padding: 26px 0 38px;
+        background: var(--paper);
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .footer-inner {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 0.85rem;
+      }
+
+      @media (max-width: 860px) {
+        .nav-inner {
+          align-items: flex-start;
+          flex-direction: column;
+          padding: 0.75rem 0;
+        }
+
+        .nav-links {
+          justify-content: flex-start;
+        }
+
+        .hero {
+          padding-top: 46px;
+        }
+
+        .intro-grid,
+        .approach-panel,
+        .trajectory-view {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .nav-inner,
+        .hero,
+        .section,
+        .footer-inner {
+          width: min(100% - 28px, 1060px);
+        }
+
+        h1 {
+          font-size: clamp(1.9rem, 10vw, 3.1rem);
+        }
+
+        .hero {
+          text-align: left;
+        }
+
+        .authors,
+        .link-row {
+          justify-content: flex-start;
+        }
+
+        .authors span {
+          white-space: normal;
+        }
+
+        .intro-grid {
+          padding: 20px;
+        }
+
+
+      .approach-panel {
+          padding: 18px;
+        }
+
+        .method-step {
+          grid-template-columns: 1fr;
+          gap: 0.55rem;
+        }
+
+        .label {
+          justify-content: flex-start;
+          min-height: auto;
+          width: max-content;
+          padding: 0.25rem 0.55rem;
+        }
+
+        .trajectory-group-header,
+        .trajectory-step-row {
+          grid-template-columns: 1fr;
+        }
+
+        .trajectory-step-label {
+          justify-content: flex-start;
+          padding: 0.45rem 0.6rem;
+        }
+
+        .pill {
+          width: 100%;
+        }
+
+        .brand-row {
+          width: 100%;
+          justify-content: space-between;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="top-nav" aria-label="Primary navigation">
+      <div class="nav-inner">
+        <div class="brand-row">
+          <a class="brand" href="#top">HiPER</a>
+          <span class="construction-badge" aria-label="Site status">Under construction</span>
+        </div>
+        <div class="nav-links">
+          <a href="#overview">Overview</a>
+          <a href="#approach">Approach</a>
+          <a href="#trajectories">Trajectories</a>
+          <a href="#citation">BibTeX</a>
+        </div>
+      </div>
+    </nav>
+
+    <header class="hero" id="top">
+      <p class="venue">Long-horizon LLM agent training</p>
+      <h1>HiPER: Hierarchical Reinforcement Learning with Explicit Credit Assignment for Large Language Model Agents</h1>
+      <p class="subtitle">
+        HiPER separates high-level planning from low-level execution and trains both levels with Hierarchical Advantage Estimation.
+      </p>
+      <div class="authors" aria-label="Authors">
+        <span>Jiangweizhi Peng</span>
+        <span>Yuanxin Liu</span>
+        <span>Ruida Zhou</span>
+        <span>Charles Fleming</span>
+        <span>Zhaoran Wang</span>
+        <span>Alfredo Garcia</span>
+        <span>Mingyi Hong</span>
+      </div>
+      <div class="link-row" aria-label="Project links">
+        <a class="pill" href="https://arxiv.org/abs/2602.16165">Paper</a>
+        <a class="pill" href="https://github.com/JonP07/HiPER-agent">Code</a>
+        <a class="pill" href="https://jonp07.notion.site/HiPER-Hierarchical-Plan-Execute-Reinforcement-Learning-for-Multi-turn-LLM-Agents-314911747a7e801b86e7eee6187d7cd5?source=copy_link">Blog</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="section" id="overview" aria-labelledby="overview-title">
+        <div class="paper-block intro-grid">
+          <div class="overview-copy">
+            <p class="overview-kicker">Core idea</p>
+            <h2 id="overview-title">Train agents at the level where they actually make progress.</h2>
+            <p class="overview-lead">
+              Humans do not solve long-horizon tasks by blindly taking one small action after another. We plan, pursue subgoals, decide when to stick with them, and switch when needed.
+            </p>
+            <p class="overview-takeaway">
+              HiPER makes that hidden structure explicit, then assigns credit to both the plan and the execution that follows it.
+            </p>
+          </div>
+          <div class="overview-points" aria-label="Overview points">
+            <article class="overview-point">
+              <span>Problem</span>
+              <h3>Flat RL blurs the cause of success.</h3>
+              <p>Sparse final rewards make it hard to tell whether an agent chose the wrong subgoal, executed poorly, or switched too early.</p>
+            </article>
+            <article class="overview-point">
+              <span>Structure</span>
+              <h3>Plan-Execute exposes subgoals.</h3>
+              <p>The agent decides whether to keep the current subgoal or switch, then acts under that subgoal while new observations arrive.</p>
+            </article>
+            <article class="overview-point">
+              <span>Training</span>
+              <h3>HAE matches credit to the hierarchy.</h3>
+              <p>Hierarchical Advantage Estimation propagates learning signals within subgoal segments and across subgoal boundaries.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+
+      <section class="section" id="performance" aria-labelledby="performance-title">
+        <h2 id="performance-title">Performance Summary</h2>
+        <p class="section-lede">
+          HiPER improves long-horizon agent training across ALFWorld and WebShop, with stronger final success rates and more stable <a href="https://wandb.ai/mhong-university-of-minnesota/verl_agent_alfworld/reports/HiPER-ALFWorld-Training-Curves--VmlldzoxNjE4OTgwMQ?accessToken=j73z6s29yru3cw5yl542a8bx816hoko7mhkmyb0ws5uvxmfn5pu551v6fay8s3x3">training curves</a>.
+        </p>
+        <figure class="performance-figure">
+          <img
+            src="./assets/header_plot.png"
+            alt="HiPER performance summary across ALFWorld and WebShop experiments"
+          >
+        </figure>
+      </section>
+
+      <section class="section" id="approach" aria-labelledby="approach-title">
+        <h2 id="approach-title">Approach</h2>
+        <p class="section-lede">
+          HiPER turns long-horizon interaction into an explicit Plan-Execute loop, then assigns credit separately to decisions made at the planning and execution levels.
+        </p>
+        <div class="paper-block approach-panel">
+          <div class="approach-copy">
+            <p>
+              Instead of optimizing a flat stream of actions, HiPER exposes the hierarchy already used by capable agents: a high-level policy selects or maintains a subgoal, while a low-level executor takes grounded actions until the next planning boundary.
+            </p>
+            <div class="method-list" aria-label="HiPER method stages">
+              <article class="method-step">
+                <span class="label">Plan</span>
+                <div>
+                  <h3>Choose the next subgoal</h3>
+                  <p>
+                    Planning: the agent decides whether to continue the current objective or switch to a better one as observations arrive.
+                  </p>
+                </div>
+              </article>
+              <article class="method-step">
+                <span class="label">Execute</span>
+                <div>
+                  <h3>Execute grounded actions</h3>
+                  <p>
+                    Execution: the agent converts each subgoal into environment actions, keeping local behavior tied to the current plan.
+                  </p>
+                </div>
+              </article>
+              <article class="method-step">
+                <span class="label">Credit</span>
+                <div>
+                  <h3>Train with hierarchical advantages</h3>
+                  <p>
+                    Hierarchical Advantage Estimation propagates feedback within each subgoal segment and across segment boundaries.
+                  </p>
+                </div>
+              </article>
+            </div>
+          </div>
+          <figure class="approach-figure">
+            <img
+              class="approach-png"
+              src="./assets/hiper.png"
+              alt="HiPER hierarchical plan-execute reinforcement learning diagram"
+            >
+          </figure>
+        </div>
+      </section>
+
+      <section class="section" id="trajectories" aria-labelledby="trajectories-title">
+        <h2 id="trajectories-title">Example Trajectories</h2>
+        <p class="section-lede">
+          Appendix E of the paper illustrates how HiPER agents keep subgoals while they remain useful and switch when the task phase changes. Select a case to view the original trajectory grouped by contiguous subgoal segments.
+        </p>
+        <div class="paper-block trajectory-shell">
+          <div class="trajectory-tabs" role="tablist" aria-label="Trajectory examples">
+            <button class="trajectory-tab is-active" type="button" data-trajectory="cup" role="tab" aria-selected="true">ALFWorld: cool cup</button>
+            <button class="trajectory-tab" type="button" data-trajectory="knife" role="tab" aria-selected="false">ALFWorld: clean knife</button>
+            <button class="trajectory-tab" type="button" data-trajectory="shop" role="tab" aria-selected="false">WebShop: shirt search</button>
+          </div>
+          <div class="trajectory-view" id="trajectory-view" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="section" id="citation" aria-labelledby="citation-title">
+        <h2 id="citation-title">BibTeX</h2>
+        <div class="bibtex-card">
+          <div class="bibtex-header">
+            <h3>Citation</h3>
+            <button class="copy-button" type="button" data-copy-target="bibtex-code">Copy</button>
+          </div>
+          <pre class="bibtex"><code id="bibtex-code">@article{peng2026hiper,
+  title={HiPER: Hierarchical Reinforcement Learning with Explicit Credit Assignment for Large Language Model Agents},
+  author={Peng, Jiangweizhi and Liu, Yuanxin and Zhou, Ruida and Fleming, Charles and Wang, Zhaoran and Garcia, Alfredo and Hong, Mingyi},
+  journal={arXiv preprint arXiv:2602.16165},
+  year={2026}
+}</code></pre>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <span>Built on <a href="https://github.com/langfengQ/verl-agent">verl-agent</a> and <a href="https://github.com/volcengine/verl">veRL</a>.</span>
+      </div>
+    </footer>
+
+    <script>
+      const trajectoryData = {
+        "cup": {
+                "title": "ALFWorld: cool some cup and put it in cabinet.",
+                "steps": [
+                        {
+                                "step": 1,
+                                "environment": "-= Welcome to TextWorld, ALFRED! =-\n\nYou are in the middle of a room. Looking quickly around you, you see a cabinet 19, a cabinet 18, a cabinet 17, a cabinet 16, a cabinet 15, a cabinet 14, a cabinet 13, a cabinet 12, a cabinet 11, a cabinet 10, a cabinet 9, a cabinet 8, a cabinet 7, a cabinet 6, a cabinet 5, a cabinet 4, a cabinet 3, a cabinet 2, a cabinet 1, a coffeemachine 1, a countertop 3, a countertop 2, a countertop 1, a drawer 4, a drawer 3, a drawer 2, a drawer 1, a fridge 1, a garbagecan 1, a microwave 1, a sinkbasin 1, a stoveburner 4, a stoveburner 3, a stoveburner 2, a stoveburner 1, and a toaster 1. Your task is to: cool some cup and put it in cabinet.",
+                                "agent": "Switch: SWITCH  Subgoal: find and cool a cup\n\nAction: go to countertop 1"
+                        },
+                        {
+                                "step": 2,
+                                "environment": "You arrive at countertop 1. On the countertop 1, you see a dishsponge 1, a mug 1, a potato 1, a saltshaker 1, and a tomato 1.",
+                                "agent": "Switch: KEEP  Subgoal: find and cool a cup\n\nAction: go to countertop 3"
+                        },
+                        {
+                                "step": 3,
+                                "environment": "You arrive at countertop 3. On the countertop 3, you see a butterknife 1, a dishsponge 3, a lettuce 2, a pot 1, a saltshaker 2, a spatula 2, and a spatula 1.",
+                                "agent": "Switch: KEEP Subgoal: find and cool a cup\n\nAction: go to countertop 2"
+                        },
+                        {
+                                "step": 4,
+                                "environment": "You arrive at countertop 2. On the countertop 2, you see a bread 1, a cup 1, a fork 1, a spoon 1, and a tomato 2.",
+                                "agent": "Switch: KEEP Subgoal: find and cool a cup\n\nAction: take cup 1 from countertop 2"
+                        },
+                        {
+                                "step": 5,
+                                "environment": "You pick up the cup 1 from the countertop 2.",
+                                "agent": "Switch: SWITCH  Subgoal: cool the cup and put it in a cabinet\n\nAction: go to fridge 1"
+                        },
+                        {
+                                "step": 6,
+                                "environment": "You arrive at fridge 1. The fridge 1 is closed.",
+                                "agent": "Switch: KEEP  Subgoal: cool the cup and put it in a cabinet\n\nAction: cool cup 1 with fridge 1"
+                        },
+                        {
+                                "step": 7,
+                                "environment": "You cool the cup 1 using the fridge 1.",
+                                "agent": "Switch: SWITCH  Subgoal: put the cooled cup in cabinet\n\nAction: go to cabinet 1"
+                        },
+                        {
+                                "step": 8,
+                                "environment": "You arrive at cabinet 1. The cabinet 1 is closed.",
+                                "agent": "Switch: KEEP Subgoal: put the cooled cup in cabinet\n\nAction: open cabinet 1"
+                        },
+                        {
+                                "step": 9,
+                                "environment": "You arrive at cabinet 1. The cabinet 1 is closed.",
+                                "agent": "Switch: KEEP\n\nSubgoal: put the cooled cup in cabinet\n\nAction: open cabinet 1"
+                        },
+                        {
+                                "step": 10,
+                                "environment": "You open the cabinet 1. The cabinet 1 is open. In it, you see nothing.",
+                                "agent": "Switch: KEEP  Subgoal: put the cooled cup in the cabinet\n\nAction: move cup 1 to cabinet 1"
+                        }
+                ]
+        },
+        "knife": {
+                "title": "ALFWorld: put a clean knife in sidetable.",
+                "steps": [
+                        {
+                                "step": 1,
+                                "environment": "-= Welcome to TextWorld, ALFRED! =-\n\nYou are in the middle of a room. Looking quickly around you, you see a cabinet 4, a cabinet 3, a cabinet 2, a cabinet 1, a coffeemachine 1, a countertop 1, a diningtable 3, a diningtable 2, a diningtable 1, a drawer 1, a fridge 1, a garbagecan 1, a microwave 1, a sidetable 1, a sinkbasin 1, a stoveburner 4, a stoveburner 3, a stoveburner 2, a stoveburner 1, and a toaster 1. Your task is to: put a clean knife in sidetable.",
+                                "agent": "Switch: SWITCH Subgoal: find a knife  Action: go to diningtable 3"
+                        },
+                        {
+                                "step": 2,
+                                "environment": "You arrive at diningtable 3. On the diningtable 3, you see a cup 2, a lettuce 1, a peppershaker 1, a potato 3, a spatula 3, and a spoon 3.",
+                                "agent": "Switch: KEEP Subgoal: find a knife\n\nAction: go to diningtable 2"
+                        },
+                        {
+                                "step": 3,
+                                "environment": "You arrive at diningtable 2. On the diningtable 2, you see a bowl 1, a bread 1, a cup 3, a fork 3, a knife 1, and a soapbottle 2.",
+                                "agent": "Switch: KEEP Subgoal: find a knife\n\nAction: take knife 1 from diningtable 2"
+                        },
+                        {
+                                "step": 4,
+                                "environment": "You pick up the knife 1 from the diningtable 2.",
+                                "agent": "Switch: SWITCH Subgoal: clean the knife 1\n\nAction: go to sinkbasin 1"
+                        },
+                        {
+                                "step": 5,
+                                "environment": "You arrive at sinkbasin 1. On the sinkbasin 1, you see a apple 1, a butterknife 2, a potato 2, and a potato 1.",
+                                "agent": "Switch: KEEP Subgoal: clean the knife 1\n\nAction: clean knife 1 with sinkbasin 1"
+                        },
+                        {
+                                "step": 6,
+                                "environment": "You clean the knife 1 using the sinkbasin 1.",
+                                "agent": "Switch: SWITCH Subgoal: put a clean knife in sidetable\n\nAction: go to sidetable 1"
+                        },
+                        {
+                                "step": 7,
+                                "environment": "You arrive at sidetable 1. On the sidetable 1, you see a apple 2, a butterknife 1, a cup 1, a fork 1, a saltshaker 1, and a spoon 2.",
+                                "agent": "Switch: KEEP Subgoal: put a clean knife in sidetable\n\nAction: move knife 1 to sidetable 1"
+                        }
+                ]
+        },
+        "shop": {
+                "title": "WebShop: Find me machine wash men's dress shirts with cotton spandex, classic fit, short sleeve with color: bright aqua, and size: x-small, and price lower than 60.00 dollars.",
+                "steps": [
+                        {
+                                "step": 1,
+                                "environment": "Your task is to: Find me machine wash men's dress shirts with cotton spandex, classic fit, short sleeve with color: bright aqua, and size: x-small, and price lower than 60.00 dollars.Your current observation is: 'Search'.",
+                                "agent": "Switch: SWITCH Subgoal: Find men's dress shirts with cotton spandex, classic fit, bright aqua, size x-small, and price lower than 60.00.  Action: search[bright aqua men's dress shirts size x-small cotton spandex bright aqua price less than 60]"
+                        },
+                        {
+                                "step": 2,
+                                "environment": "'Back to Search'\n\n'Page 1 (Total results: 50)'\n\n'Next >'\n\n'B07HRFSNL4'\n'Nautica Men's Solid Crew Neck Short-Sleeve Pocket T-Shirt'\n'$16.05 to $40.98'\n\n'B07F2G93BJ'\n'Amazon Essentials Men's Slim-fit Long-Sleeve Solid Pocket Oxford Shirt'\n'$18.5'\n\n'B09QQP3356'\n'HAUKLIE Men's Sports Waffle Ribbed Polo Shirts Summer Short Sleeve Cotton Muscle Quarter-Zip Henley T-Shirt Tunics Tops'\n'$10.99'\n\n'B00ED8OH2C'\n'Propper Men's Pack 3 t-Shirt'\n'$13.37 to $47.74'\n\n'B09KLQLLT2'\n'Long Sleeve Superhero T Shirt Tank Top Mens Compression Shirt Men Workout Fitness Gym Shirt'\n'$19.99'\n\n'B09PBPZ24Z'\n'myhehthw Women's High Waisted Jeans for Women Distressed Ripped Jeans Slim Fit Butt Lifting Skinny Stretch Jeans Trousers'\n'$22.99 to $25.99'\n\n'B09M63B87V'\n'YALFJV Women Long Sleeve Crew Neck Side Button T Shirts Tunic Dress Loose Asymmetric Hem Tunic Pullover to Wear with Leggings'\n'$10.71 to $18.34'\n\n'B07DKGJR74'\n'Amazon Brand - Daily Ritual Women's 100% Cotton Oversized Fit V-Neck Pullover Sweater'\n'$20.66 to $29.2'\n\n'B099231V35'\n'Mens Casual Cargo Pants Hi Vis Viz Reflective Overalls High Visibility Safe Work Pants Outdoor Hiking Trousers Big and Tall'\n'$16.79'\n\n'B07JVVDJ6L'\n'Canadian Tuxedo T Shirt - Novelty Denim Tux T-Shirt'\n'$19.99'.",
+                                "agent": "Switch: KEEP Subgoal: Find men's dress shirts with cotton spandex, classic fit, bright aqua, size x-small, and price lower than 60.00. Action: click[b07hrfsnl4]"
+                        },
+                        {
+                                "step": 3,
+                                "environment": "'Back to Search'\n\n'< Prev'\n\n'size'\n'x-small'\n'small'\n'medium'\n'large'\n'large tall'\n'x-large'\n'x-large tall'\n'xx-large'\n'xx-large tall'\n'3x-large tall'\n'4x-large tall'\n'5x-large tall'\n'1x'\n'2x'\n'3x'\n'4x'\n'5x'\n'6x'\n\n'color'\n'navy'\n'noon blue'\n'grey heather'\n'nautica red'\n'bright white'\n'true black'\n'pale coral'\n'cradle pink'\n'bright aqua'\n'mint spring'\n'monaco blue'\n'charcoal heather (dark)'\n'barolo'\n'tidal green'\n'charcoal heather (light)'\n'estate blue'\n'patina green'\n'black'\n'bright aqua blue'\n'bright cobalt'\n'coral sands'\n'deep anchor heather'\n'hawaiian ocean'\n'melon berry'\n'pine forest green'\n'shipwreck burgundy'\n'white'\n'zest'\n'deep atlantic'\n'delft'\n'pale coral red'\n\n'Nautica Men's Solid Crew Neck Short-Sleeve Pocket T-Shirt'\n 'Price: $16.05 to $40.98'\n 'Rating: N.A.'\n 'Description'\n 'Features'\n 'Reviews'\n 'Buy Now'",
+                                "agent": "Switch: SWITCH Subgoal: Find bright aqua men's dress shirts with cotton spandex, classic fit, size x-small, and price lower than 60.00 Action: click[bright aqua]"
+                        },
+                        {
+                                "step": 4,
+                                "environment": "'Back to Search'\n\n'< Prev'\n\n'size' 'x-small' 'small' 'medium' 'large' 'large tall' 'x-large' 'x-large tall' 'xx-large' 'xx-large tall' '3x-large tall' '4x-large tall' '5x-large tall' '1x' '2x' '3x' '4x' '5x' '6x'\n\n'color' 'navy' 'noon blue' 'grey heather' 'nautica red' 'bright white' 'true black' 'pale coral' 'cradle pink' 'bright aqua' 'mint spring' 'monaco blue' 'charcoal heather (dark)' 'barolo' 'tidal green' 'charcoal heather (light)' 'estate blue' 'patina green' 'black' 'bright aqua blue' 'bright cobalt' 'coral sands' 'deep anchor heather' 'hawaiian ocean' 'melon berry' 'pine forest green' 'shipwreck burgundy' 'white' 'zest' 'deep atlantic' 'delft' 'pale coral red'\n\n'Nautica Men's Solid Crew Neck Short-Sleeve Pocket T-Shirt' 'Price: $16.05 to $40.98' 'Rating: N.A.' 'Description' 'Features' 'Reviews' 'Buy Now'",
+                                "agent": "Switch: KEEP Subgoal: Find bright aqua men's dress shirts with cotton spandex, classic fit, size x-small, and price lower than 60.00 Action: click[x-small]"
+                        },
+                        {
+                                "step": 5,
+                                "environment": "'Back to Search'\n\n'< Prev'\n\n'size'  'x-small'  'small'  'medium'  'large'  'large tall'  'x-large'  'x-large tall'  'xx-large'  'xx-large tall'  '3x-large tall'  '4x-large tall'  '5x-large tall'  '1x'  '2x'  '3x'  '4x'  '5x'  '6x'\n\n'color'  'navy'  'noon blue'  'grey heather'  'nautica red'  'bright white'  'true black'  'pale coral'  'cradle pink'  'bright aqua'  'mint spring'  'monaco blue'  'charcoal heather (dark)'  'barolo'  'tidal green'  'charcoal heather (light)'  'estate blue'  'patina green'  'black'  'bright aqua blue'  'bright cobalt'  'coral sands'  'deep anchor heather'  'hawaiian ocean'  'melon berry'  'pine forest green'  'shipwreck burgundy'  'white'  'zest'  'deep atlantic'  'delft'  'pale coral red'\n\n'Nautica Men's Solid Crew Neck Short-Sleeve Pocket T-Shirt'  'Price: $16.05 to $40.98'  'Rating: N.A.'  'Description'  'Features'  'Reviews'  'Buy Now'",
+                                "agent": "Switch: KEEP Subgoal: Find bright aqua men's dress shirts with cotton spandex, classic fit, size x-small, and price lower than 60.00 Action: click[buy now]"
+                        }
+                ]
+        }
+};
+
+      const view = document.getElementById("trajectory-view");
+      const tabs = Array.from(document.querySelectorAll(".trajectory-tab"));
+      let activeTrajectory = "cup";
+
+      function escapeHtml(value) {
+        return String(value)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function getSubgoal(agentText) {
+        const match = String(agentText).match(/Subgoal:\s*([\s\S]*?)\s*Action:/);
+        return match ? match[1].replace(/\s+/g, " ").trim() : "Current subgoal";
+      }
+
+      function getSwitch(agentText) {
+        const match = String(agentText).match(/Switch:\s*(KEEP|SWITCH)/i);
+        return match ? match[1].toUpperCase() : "STEP";
+      }
+
+      function normalizeSubgoal(subgoal) {
+        return subgoal
+          .toLowerCase()
+          .replace(/\b(a|an|the)\b/g, "")
+          .replace(/[^a-z0-9]+/g, " ")
+          .trim();
+      }
+
+      function groupBySubgoal(steps) {
+        return steps.reduce((groups, item) => {
+          const subgoal = getSubgoal(item.agent || "");
+          const key = normalizeSubgoal(subgoal);
+          const previous = groups[groups.length - 1];
+          if (previous && previous.key === key) {
+            previous.steps.push(item);
+            previous.switches.push(getSwitch(item.agent || ""));
+          } else {
+            groups.push({
+              key,
+              subgoal,
+              steps: [item],
+              switches: [getSwitch(item.agent || "")]
+            });
+          }
+          return groups;
+        }, []);
+      }
+
+      function formatRange(steps) {
+        const first = steps[0].step;
+        const last = steps[steps.length - 1].step;
+        return first === last ? `Step ${first}` : `Steps ${first}-${last}`;
+      }
+
+      function renderTrajectory(openGroup = 0) {
+        const trajectory = trajectoryData[activeTrajectory];
+        const groups = groupBySubgoal(trajectory.steps).map((group, index) => {
+          const isOpen = index === openGroup;
+          const rows = group.steps.map((item) => `
+            <div class="trajectory-step-row">
+              <div class="trajectory-step-label">Step ${item.step}</div>
+              <article class="trajectory-block env">
+                <h4>Environment</h4>
+                <pre class="trajectory-text">${escapeHtml(item.environment || "")}</pre>
+              </article>
+              <article class="trajectory-block agent">
+                <h4>Agent</h4>
+                <pre class="trajectory-text">${escapeHtml(item.agent || "")}</pre>
+              </article>
+            </div>
+          `).join("");
+          return `
+            <article class="trajectory-group ${isOpen ? "is-open" : ""}">
+              <button class="trajectory-group-header" type="button" data-group="${index}" aria-expanded="${String(isOpen)}">
+                <span class="trajectory-range">${formatRange(group.steps)}</span>
+                <h3 class="trajectory-subgoal">${escapeHtml(group.subgoal)}</h3>
+                <span class="trajectory-chevron" aria-hidden="true">${isOpen ? "-" : "+"}</span>
+              </button>
+              <div class="trajectory-steps">${rows}</div>
+            </article>
+          `;
+        }).join("");
+        view.innerHTML = `
+          <h3 class="trajectory-title">${escapeHtml(trajectory.title)}</h3>
+          <div class="trajectory-groups">${groups}</div>
+        `;
+        view.querySelectorAll(".trajectory-group-header").forEach((button) => {
+          button.addEventListener("click", () => {
+            const group = button.closest(".trajectory-group");
+            const isOpen = group.classList.toggle("is-open");
+            button.setAttribute("aria-expanded", String(isOpen));
+            const chevron = button.querySelector(".trajectory-chevron");
+            if (chevron) chevron.textContent = isOpen ? "-" : "+";
+          });
+        });
+      }
+
+      tabs.forEach((button) => {
+        button.addEventListener("click", () => {
+          activeTrajectory = button.dataset.trajectory;
+          tabs.forEach((tab) => {
+            const isActive = tab === button;
+            tab.classList.toggle("is-active", isActive);
+            tab.setAttribute("aria-selected", String(isActive));
+          });
+          renderTrajectory();
+        });
+      });
+
+      renderTrajectory();
+
+      document.querySelectorAll("[data-copy-target]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const target = document.getElementById(button.dataset.copyTarget);
+          if (!target) return;
+          const original = button.textContent;
+          try {
+            await navigator.clipboard.writeText(target.textContent.trim());
+            button.textContent = "Copied";
+          } catch (error) {
+            button.textContent = "Select text";
+          }
+          window.setTimeout(() => {
+            button.textContent = original;
+          }, 1600);
+        });
+      });
+    </script>
+  </body>
+</html>
