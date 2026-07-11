@@ -8,3 +8,8 @@ outputs/
 wandb/
 *.log
 .DS_Store
+
+# implementation planning docs -- working instructions, not meant to be committed
+IMP1-LITE-env-setup.md
+IMP2-full-framework-build.md
+IMP3-tuning-phase.md

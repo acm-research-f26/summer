@@ -146,3 +146,8 @@ data/
 .tmp
 *ports
 
+# pyserini's embedded JVM occasionally segfaults in a background thread
+# (observed once, didn't affect run correctness) -- see ../implementation-2/README.md
+hs_err_pid*.log
+core.[0-9]*
+

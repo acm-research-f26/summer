@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+
+# orchestration baseline run outputs (generated, not source)
+baseline_a_results.json
+baseline_b_results.json

@@ -9,8 +9,15 @@ import sys
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
 
+import verl  # noqa: F401 -- imported only to locate implementation-1/ via its install path below
+
+# agent_system lives in implementation-1/, a sibling of implementation-2/ (this folder), not a
+# subdirectory of it -- so we can't derive its path from this file's own location. verl is
+# installed editable from implementation-1/'s root, so its resolved location is a reliable anchor
+# regardless of where each implementation folder actually sits on disk.
+_IMPLEMENTATION_1_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(verl.__file__)))
 _WEBSHOP_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "agent_system", "environments", "env_package", "webshop", "webshop"
+    _IMPLEMENTATION_1_ROOT, "agent_system", "environments", "env_package", "webshop", "webshop"
 )
 if _WEBSHOP_DIR not in sys.path:
     sys.path.append(_WEBSHOP_DIR)
