@@ -41,7 +41,7 @@ import os
 import random
 import pygame
 
-from engine import Battle, PlayerAction
+from engine import Battle, PlayerAction, PlannedBossSkill
 from game_data import build_party_units, build_boss
 
 # ----------------------------------------------------------------------------
@@ -367,7 +367,6 @@ class GameUI:
         else:
             old_target = slot.target_names[0] if slot.target_names else None
             targets = [old_target] if old_target in alive_names else [alive_names[0]]
-        from engine import PlannedBossSkill
         self.boss_slots[slot_index] = PlannedBossSkill(new_def, targets)
 
     def _cycle_boss_target(self, slot_index):

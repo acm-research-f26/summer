@@ -1,3 +1,4 @@
+import copy
 import random
 from dataclasses import dataclass, field
 from skill_queue import SkillQueue
@@ -175,6 +176,38 @@ class Battle:
 
     def alive_units(self):
         return [u for u in self.units.values() if u.is_alive()]
+
+    def clone(self, new_rng=None):
+        """
+        Returns a fully independent deep copy of this Battle - boss, every
+        unit, every status effect, the skill queues, everything - safe to
+        resolve turns on without touching the original in any way. This is
+        the whole point of a "clone": it lets an AI simulate a few turns
+        ahead ("what happens if I do X instead of Y?") before committing to
+        a real decision, by trying things out on throwaway copies.
+
+        Skill/passive effect functions (e.g. `SkillDef.effect`) are plain
+        module-level functions with no state of their own, so they come
+        through unchanged and still work correctly on the clone - deep-copy
+        only ever duplicates *data*, never the functions that operate on it.
+
+        By default the clone's RNG is ALSO deep-copied, meaning it continues
+        the exact same random sequence the original would have - so if you
+        resolved an identical turn on both the clone and the original,
+        you'd get identical dice rolls. This is what you want for "replay
+        this exact scenario forward" lookahead.
+
+        Pass `new_rng` (e.g. `random.Random(some_seed)`) instead if you want
+        the clone to explore a genuinely different hypothetical future -
+        useful for trying several different random continuations from the
+        same starting point (Monte-Carlo-style rollouts), or for cloning
+        the same state repeatedly with different seeds to see how a
+        decision performs "on average" rather than against one fixed future.
+        """
+        cloned_battle = copy.deepcopy(self)
+        if new_rng is not None:
+            cloned_battle.rng = new_rng
+        return cloned_battle
 
     def boss_choose_turn(self):
         """
@@ -609,9 +642,12 @@ class Battle:
 # skill_def.base_damage (making it an actual tunable) rather than hardcoded -
 # only the status-effect magnitudes (potency/count) are fixed numbers here.
 #
-# NOTE: BossSkillDef "Clash Baiter"'s clash-triggered +5 roll / +900% damage
-# bonus is a roll/clash-time mechanic, not a target-effect, and is NOT yet
-# implemented here — it still just deals its flat base damage.
+# NOTE: Clash Baiter's "+5 roll / 10x damage if clashed" bonus isn't handled
+# in its effect function below (it just deals flat base damage like anything
+# else) - that bonus is a *clash-time* mechanic (it only matters while the
+# roll itself is happening, before any effect function even runs), so it
+# lives on BossSkillDef.clash_roll_bonus / clash_damage_multiplier instead,
+# applied directly inside Battle._resolve_clash.
 # ----------------------------------------------------------------------------
 
 def effect_tremor_scorch_skill1(battle, source, target, log, skill_def):

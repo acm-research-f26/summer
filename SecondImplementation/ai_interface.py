@@ -52,12 +52,57 @@ A policy that wants to accurately estimate its own clash odds should account
 for these bonuses itself when computing win probabilities, since they matter
 a lot in practice (a policy that ignores them scored ~50% in testing; the
 same logic aware of passives scored ~75-80%).
+
+LOOKING AHEAD (simulating a few turns before committing to a real decision):
+`state` is just a read-only snapshot, so it alone can't tell you "what would
+happen if I tried this?" - for that you need the actual, live `Battle`
+object, which has a `.clone()` method for exactly this purpose (see its
+docstring in engine.py). If your policy function accepts extra parameters,
+`run_headless_battle` passes it the real `Battle` and the boss's already-
+chosen `boss_slots` for the turn about to be played, so you can clone the
+battle, try out a candidate move AGAINST THAT SAME boss turn, look at the
+result, and repeat before returning your actual commands:
+
+    def lookahead_policy(state, battle, boss_slots):
+        # IMPORTANT: reuse the given boss_slots on your clones - don't call
+        # scratch.boss_choose_turn() yourself, since that would re-roll a
+        # DIFFERENT random boss turn than the one that's actually happening.
+        best_commands, best_score = None, None
+        for candidate in generate_some_candidate_command_lists(state):
+            scratch = battle.clone()  # throwaway copy, safe to mess with
+            try:
+                actions = commands_to_player_actions(scratch, boss_slots, candidate)
+            except ValueError:
+                continue  # e.g. two units clashing the same slot - just skip it
+            scratch.resolve_turn(boss_slots, actions)
+            score = scratch.boss.hp  # or whatever you want to optimize
+            if best_score is None or score < best_score:
+                best_score, best_commands = score, candidate
+        return best_commands
+
+    run_headless_battle(lookahead_policy, seed=1)
+
+A policy that only accepts `state` (the simple case at the top of this
+docstring) still works exactly as before - `run_headless_battle` detects how
+many parameters your function takes and calls it with just as many
+arguments: `(state)`, `(state, battle)`, or `(state, battle, boss_slots)`.
 """
 
+import inspect
 import random
 
 from engine import Battle, PlayerAction
 from game_data import build_party_units, build_boss
+
+
+def _policy_arg_count(policy_fn):
+    """How many positional arguments policy_fn's signature accepts (1-3)."""
+    try:
+        return len(inspect.signature(policy_fn).parameters)
+    except (TypeError, ValueError):
+        # some callables (e.g. certain builtins) don't support introspection -
+        # just assume the simple, one-argument form in that case.
+        return 1
 
 
 def _skill_info(unit, skill_type):
@@ -189,9 +234,20 @@ def commands_to_player_actions(battle, boss_slots, commands):
 
 def run_headless_battle(policy_fn, max_turns=60, seed=None, on_turn_end=None):
     """
-    Fully headless battle runner - no pygame, no display. Calls policy_fn(state)
+    Fully headless battle runner - no pygame, no display. Calls policy_fn
     once per turn and expects the compact command list back (see module
     docstring). Returns {"outcome": "win"|"loss"|"draw", "turns": int, "battle": Battle}.
+
+    policy_fn can accept 1, 2, or 3 positional arguments:
+        policy_fn(state)                       - the simple case
+        policy_fn(state, battle)               - also gets the live Battle,
+                                                  e.g. to battle.clone() for lookahead
+        policy_fn(state, battle, boss_slots)   - also gets the boss's already-
+                                                  chosen skills for this turn, so
+                                                  lookahead code can resolve clones
+                                                  against that SAME boss turn
+                                                  instead of re-rolling a new one
+    (see the "LOOKING AHEAD" section of the module docstring for a full example).
 
     on_turn_end(state, commands, log), if given, is called after each turn
     resolves (log is the engine's BattleLog for that turn) - handy for
@@ -201,13 +257,21 @@ def run_headless_battle(policy_fn, max_turns=60, seed=None, on_turn_end=None):
     units = build_party_units()
     boss = build_boss()
     battle = Battle(boss, units, rng=rng)
+    arg_count = _policy_arg_count(policy_fn)
 
     for _ in range(max_turns):
         if not battle.boss.is_alive() or not battle.alive_units():
             break
         boss_slots = battle.boss_choose_turn()
         state = build_state(battle, boss_slots)
-        commands = policy_fn(state)
+
+        if arg_count >= 3:
+            commands = policy_fn(state, battle, boss_slots)
+        elif arg_count == 2:
+            commands = policy_fn(state, battle)
+        else:
+            commands = policy_fn(state)
+
         actions = commands_to_player_actions(battle, boss_slots, commands)
         log = battle.resolve_turn(boss_slots, actions)
         if on_turn_end is not None:

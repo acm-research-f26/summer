@@ -220,6 +220,80 @@ def test_target_idx_matches_boss_slot_target_names():
     print("test_target_idx_matches_boss_slot_target_names passed.")
 
 
+def test_run_headless_battle_supports_one_arg_policy():
+    def one_arg_policy(state):
+        return [[0, 0] for u in state["units"] if u["available_skills"]]
+
+    result = run_headless_battle(one_arg_policy, max_turns=3, seed=1)
+    assert result["outcome"] in ("win", "loss", "draw")
+    print("test_run_headless_battle_supports_one_arg_policy passed.")
+
+
+def test_run_headless_battle_supports_two_arg_policy_with_live_battle():
+    seen = []
+
+    def two_arg_policy(state, battle):
+        seen.append(battle)
+        return [[0, 0] for u in state["units"] if u["available_skills"]]
+
+    run_headless_battle(two_arg_policy, max_turns=3, seed=1)
+    assert len(seen) > 0
+    assert all(hasattr(b, "clone") for b in seen), "should receive the real Battle object"
+    print("test_run_headless_battle_supports_two_arg_policy_with_live_battle passed.")
+
+
+def test_run_headless_battle_supports_three_arg_policy_with_boss_slots():
+    seen = []
+
+    def three_arg_policy(state, battle, boss_slots):
+        seen.append(boss_slots)
+        return [[0, 0] for u in state["units"] if u["available_skills"]]
+
+    run_headless_battle(three_arg_policy, max_turns=3, seed=1)
+    assert len(seen) > 0
+    # boss_slots should be the SAME object build_state used to build state["boss"]["slots"]
+    assert isinstance(seen[0], list)
+    print("test_run_headless_battle_supports_three_arg_policy_with_boss_slots passed.")
+
+
+def test_lookahead_policy_clone_does_not_disturb_the_real_battle():
+    """A policy that clones-and-explores several candidates on scratch copies
+    should not affect the real battle's actual progression at all - only its
+    own returned commands should end up applied for real."""
+    import itertools
+
+    def generate_candidates(state):
+        actionable = [u for u in state["units"] if u["available_skills"]]
+        options = []
+        for _ in actionable:
+            opts = [[0, 0]]
+            if state["boss"]["slots"]:
+                opts.append([0, 1])
+            options.append(opts)
+        for combo in itertools.product(*options):
+            yield list(combo)
+
+    def lookahead_policy(state, battle, boss_slots):
+        best_commands, best_score = None, None
+        for candidate in generate_candidates(state):
+            scratch = battle.clone()
+            try:
+                actions = commands_to_player_actions(scratch, boss_slots, candidate)
+            except ValueError:
+                continue
+            scratch.resolve_turn(boss_slots, actions)
+            score = scratch.boss.hp
+            if best_score is None or score < best_score:
+                best_score, best_commands = score, candidate
+        return best_commands
+
+    result = run_headless_battle(lookahead_policy, seed=5, max_turns=15)
+    assert result["outcome"] in ("win", "loss", "draw")
+    assert result["turns"] > 0
+    print(f"test_lookahead_policy_clone_does_not_disturb_the_real_battle passed. "
+          f"(outcome={result['outcome']}, turns={result['turns']})")
+
+
 if __name__ == "__main__":
     test_build_state_shape()
     test_available_skills_empty_for_staggered_unit()
@@ -234,4 +308,8 @@ if __name__ == "__main__":
     test_run_headless_battle_calls_on_turn_end_callback()
     test_run_headless_battle_is_deterministic_given_same_seed()
     test_target_idx_matches_boss_slot_target_names()
+    test_run_headless_battle_supports_one_arg_policy()
+    test_run_headless_battle_supports_two_arg_policy_with_live_battle()
+    test_run_headless_battle_supports_three_arg_policy_with_boss_slots()
+    test_lookahead_policy_clone_does_not_disturb_the_real_battle()
     print("\nALL AI INTERFACE TESTS PASSED")
