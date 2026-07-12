@@ -40,7 +40,7 @@ class SkillQueue:
         """Visible but not pickable yet."""
         return list(self.queue[2:4])
 
-    def pick(self, skill_type, position=None):
+    def select_skill(self, position):
         """
         Player picks a skill_type ('skill1' or 'skill2') from the available slots.
         Must be present in self.available.
@@ -54,24 +54,9 @@ class SkillQueue:
 
         Returns the skill_type picked (for convenience/chaining).
         """
-        if skill_type not in self.available:
-            raise ValueError(
-                f"Cannot pick {skill_type}; available slots are {self.available}"
-            )
-
-        if position is not None:
-            if position not in (0, 1):
-                raise ValueError(f"position must be 0 or 1, got {position}")
-            if self.queue[position] != skill_type:
-                raise ValueError(
-                    f"Slot {position} is {self.queue[position]!r}, not {skill_type!r}"
-                )
-            picked_bottom = (position == 0)
-        else:
-            # fall back to matching queue[0] first; ambiguous only when both slots
-            # are the same type, in which case it doesn't matter which specific
-            # instance we treat this as (they're identical), so default to bottom.
-            picked_bottom = (self.queue[0] == skill_type)
+        if position not in (0, 1):
+            raise ValueError(f"position must be 0 or 1, got {position}")
+        picked_bottom = (position == 0)
 
         if picked_bottom:
             # picked the bottom slot -> remove just index 0, shift down by 1
@@ -82,7 +67,6 @@ class SkillQueue:
             self.queue.pop(0)  # after first pop, old index1 is now index0
 
         self._refill_if_needed()
-        return skill_type
 
     def __repr__(self):
         return f"SkillQueue(available={self.available}, next_up={self.next_up}, len={len(self.queue)})"

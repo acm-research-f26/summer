@@ -9,49 +9,75 @@ Typical usage:
     from ai_interface import run_headless_battle
 
     def my_policy(state):
-        # state has everything the AI needs: turn number, every unit's hp/
-        # status effects/available skills, and the boss's hp/status/chosen
-        # skills this turn. See build_state() below for the exact shape.
         commands = []
         for unit in state["units"]:
-            if not unit["available_skills"]:
-                continue  # dead or staggered - needs no command at all
+            if unit["is_dead"] or unit["is_staggered"]:
+                continue  # needs no command at all
             commands.append([0, 0])  # bottom skill, attack unopposed
         return commands
 
     result = run_headless_battle(my_policy, seed=42)
     print(result["outcome"], result["turns"])
 
+STATE SHAPE. `state` is deliberately small and mostly-numeric (built for
+feeding a model, not for reading prose) - see build_state()'s docstring for
+the exact shape, but in short:
+
+    state["turn_number"]  - int
+    state["units"]        - always exactly 3 entries (one per party unit, in
+                             a FIXED order that never changes across the
+                             whole battle - index 0 always means the same
+                             unit, etc), each with hp / is_dead / is_staggered
+                             / burn & tremor potency+count / whether tremor
+                             scorch is genuinely active / magic bullets /
+                             clash_power_level / damage_reduction_active /
+                             a 4-int "skills" array (current bottom+top, next
+                             bottom+top, each 0=skill1 or 1=skill2), and how
+                             many stagger thresholds it has left (just the
+                             count - not where they are).
+    state["boss"]         - same status fields as a unit, PLUS
+                             "chosen_skills": always exactly 3 [skill_number,
+                             target] pairs (see below), [-1, -1] for any slot
+                             the boss didn't actually use this turn (it was
+                             staggered or dead).
+
+Roll ranges, base damage, and which skills hit all 3 party members at once
+are FIXED - they never change turn to turn - so they're not repeated in
+`state` every turn. Fetch them once with get_skill_catalog() instead.
+
+skill_number (0-4) identifies which of the boss's 5 possible skills a
+chosen_skills entry is, matching the order in get_skill_catalog()["boss_skills"].
+target is 0/1/2 for a specific party unit (same fixed indexing as state["units"]),
+or -1 if that skill hits all 3 at once (an AoE skill - get_skill_catalog()
+tells you which skill_numbers are AoE via "hits_all").
+
 The command format for one turn is a list with one [skill_idx, target_idx]
-pair per unit that needs an action (i.e. alive AND not staggered - skip any
-unit whose "available_skills" list is empty), in the same order as
-state["units"]:
+pair per unit that needs an action (i.e. not dead and not staggered - skip
+any other unit), in the same fixed order as state["units"]:
 
     skill_idx:  0 = the BOTTOM available skill, 1 = the TOP available skill.
     target_idx: 0 = attack unopposed.
                 1, 2, or 3 = clash the boss's 1st/2nd/3rd chosen skill this
-                turn (i.e. boss slot index target_idx - 1). Only valid indices
-                that actually exist in state["boss"]["slots"] are usable -
-                if the boss has no skills this turn (staggered or dead),
-                state["boss"]["slots"] is empty and only target_idx 0 is valid.
+                turn (i.e. chosen_skills index target_idx - 1). Only valid
+                indices that actually exist this turn are usable - if the
+                boss has no real skills this turn (staggered or dead, so its
+                chosen_skills are all [-1, -1]), only target_idx 0 is valid.
 
 Example: [[0, 0], [1, 2], [0, 1]] means the first actionable unit attacks
 unopposed with its bottom skill, the second clashes the boss's 2nd chosen
 skill with its top skill, and the third clashes the boss's 1st chosen skill
 with its bottom skill.
 
-NOTE ON PASSIVES: each unit (and the boss) has a `passive_description` string
-in the state - some of these grant a +1.5 roll bonus (and, for one unit, a
-damage reduction) under certain conditions, e.g. "if opponent has +15 burn
-potency" or "if self has +10 tremor potency". These conditions are checked
-against fields already present in state (a unit's own tremor_potency /
-burn_potency / magic_bullets, and the boss's tremor_potency / burn_potency),
-but the ENGINE - not this interface - is what actually applies the bonus
-during clash resolution; nothing needs to be added to your commands for it.
-A policy that wants to accurately estimate its own clash odds should account
-for these bonuses itself when computing win probabilities, since they matter
-a lot in practice (a policy that ignores them scored ~50% in testing; the
-same logic aware of passives scored ~75-80%).
+NOTE ON PASSIVES: `clash_power_level` (0, 1, or 2) tells you how many of a
+unit's passive +1.5-roll conditions are CURRENTLY satisfied (each one always
+grants exactly +1.5, so 2 active conditions = +3.0 total) - the engine
+applies this automatically during clash resolution, so nothing needs to be
+added to your commands for it, but a policy that wants to accurately
+estimate its own clash odds should account for it when computing win
+probabilities, since it matters a lot in practice (a policy that ignores it
+scored ~50% in testing; the same logic aware of it scored ~75-80%).
+`damage_reduction_active` similarly tells you whether a unit's passive
+damage reduction (only one unit has this) is currently in effect.
 
 LOOKING AHEAD (simulating a few turns before committing to a real decision):
 `state` is just a read-only snapshot, so it alone can't tell you "what would
@@ -105,82 +131,127 @@ def _policy_arg_count(policy_fn):
         return 1
 
 
-def _skill_info(unit, skill_type):
-    d = unit.get_skill_def(skill_type)
-    return {
-        "skill_type": skill_type,  # 'skill1' or 'skill2', informational only
-        "name": d.name,
-        "roll_lo": d.roll_lo,
-        "roll_hi": d.roll_hi,
-        "base_damage": d.base_damage,
-        "description": d.description,
-    }
+def _status_fields(entity, opponent):
+    """
+    Shared compact status fields for both a PlayerUnit and the Boss.
 
+    `opponent` is whoever's "opponent has +X potency"-style passive
+    conditions should be checked against (the boss, for a party unit; None
+    for the boss itself, since the boss has no passives of its own).
 
-def _combatant_status(entity):
-    """Shared status-effect fields for both a PlayerUnit and the Boss."""
+    tremor_scorch_active is deliberately false whenever tremor_count is 0,
+    even if `tremor_type` still technically says "scorch" from a
+    not-yet-expired amplitude conversion - with no count left there's no
+    tremor stack at all (scorch or otherwise) for it to matter.
+    """
+    clash_power_level = 0
+    if getattr(entity, "passive_roll_bonus_fn", None) is not None and opponent is not None:
+        bonus = entity.passive_roll_bonus_fn(entity, opponent)
+        # each satisfied condition always grants exactly +1.5, so dividing
+        # tells us how many of the (up to 2) conditions are active: 0, 1, or 2.
+        clash_power_level = round(bonus / 1.5) if bonus else 0
+
+    damage_reduction_active = False
+    if getattr(entity, "passive_damage_reduction_fn", None) is not None:
+        if entity.passive_damage_reduction_fn(entity) == 1.0:
+            damage_reduction_active = 0
+        elif entity.passive_damage_reduction_fn(entity) == 0.8:
+            damage_reduction_active = 1
+        else:
+            damage_reduction_active = 2
+
     return {
         "hp": entity.hp,
-        "max_hp": entity.max_hp,
-        "is_alive": entity.is_alive(),
+        "is_dead": not entity.is_alive(),
         "is_staggered": entity.is_staggered,
-        "stagger_turns_left": entity.stagger_turns_left,
-        "active_stagger_thresholds": entity.active_stagger_thresholds(),
-        "tremor_potency": entity.tremor_potency,
-        "tremor_count": entity.tremor_count,
-        "tremor_type": entity.tremor_type,  # "normal" or "scorch"
+        "num_stagger_thresholds_remaining": len(entity.active_stagger_thresholds()),
         "burn_potency": entity.burn_potency,
         "burn_count": entity.burn_count,
-        "dark_flame_count": entity.dark_flame_count,
+        "tremor_potency": entity.tremor_potency,
+        "tremor_count": entity.tremor_count,
+        "tremor_scorch_active": entity.tremor_count > 0 and entity.tremor_type == "scorch",
+        "magic_bullets": entity.magic_bullets,
+        "clash_power_level": clash_power_level,
+        "damage_reduction_active": damage_reduction_active,
     }
 
 
-def _unit_info(unit):
-    info = {"name": unit.name, "passive_description": unit.passive_description, **_combatant_status(unit)}
-    info["magic_bullets"] = unit.magic_bullets
-    info["max_magic_bullets"] = unit.max_magic_bullets
-    needs_action = unit.is_alive() and not unit.is_staggered
-    info["available_skills"] = (
-        [_skill_info(unit, st) for st in unit.queue.available] if needs_action else []
-    )
-    info["next_up_skills"] = (
-        [_skill_info(unit, st) for st in unit.queue.next_up] if unit.is_alive() else []
-    )
-    return info
-
-
-def _boss_slot_info(slot):
-    sd = slot.skill_def
-    return {
-        "name": sd.name,
-        "roll_lo": sd.roll_lo,
-        "roll_hi": sd.roll_hi,
-        "base_damage": sd.base_damage,
-        "hits_all": sd.hits_all,
-        "targets": list(slot.target_names),
-        "clash_roll_bonus": sd.clash_roll_bonus,
-        "clash_damage_multiplier": sd.clash_damage_multiplier,
-        "description": sd.description,
-    }
+def _skill_bits(unit):
+    """[current_bottom, current_top, next_bottom, next_top], each 0 (skill1) or 1 (skill2)."""
+    skill_types = list(unit.queue.available) + list(unit.queue.next_up)
+    return [0 if skill_type == "skill1" else 1 for skill_type in skill_types]
 
 
 def build_state(battle, boss_slots):
     """
-    Builds the full state dict a policy function needs to decide a turn's
-    commands. Call this AFTER battle.boss_choose_turn() so boss_slots
-    reflects what the boss actually picked (or didn't - it can be empty if
-    the boss is staggered or dead, or if the whole battle is already over).
+    Builds the compact state dict a policy function needs to decide a turn's
+    commands - see the module docstring for the full shape and field
+    meanings. Call this AFTER battle.boss_choose_turn(), so boss_slots
+    reflects what the boss actually picked this turn (it can be an empty
+    list if the boss is staggered or dead, or the whole battle is already over).
     """
+    # a stable, fixed ordering: index 0/1/2 always refer to the same unit for
+    # the entire battle, regardless of who's alive/dead/staggered right now.
+    unit_order = list(battle.units.keys())
+
+    units_state = []
+    for name in unit_order:
+        unit = battle.units[name]
+        entry = _status_fields(unit, opponent=battle.boss)
+        entry["skills"] = _skill_bits(unit)
+        units_state.append(entry)
+
+    chosen_skills = []
+    for slot in boss_slots:
+        skill_number = battle.boss.skills.index(slot.skill_def)
+        target = -1 if slot.skill_def.hits_all else unit_order.index(slot.target_names[0])
+        chosen_skills.append([skill_number, target])
+    while len(chosen_skills) < 3:
+        chosen_skills.append([-1, -1])  # boss didn't actually use this slot this turn
+
+    boss_state = _status_fields(battle.boss, opponent=None)
+    boss_state["chosen_skills"] = chosen_skills
+
     return {
-        "turn_number": battle.turn_number + 1,  # the turn about to be played
-        "units": [_unit_info(u) for u in battle.units.values()],
-        "boss": {
-            "name": battle.boss.name,
-            "passive_description": battle.boss.passive_description,
-            **_combatant_status(battle.boss),
-            "slots": [_boss_slot_info(s) for s in boss_slots],
-        },
+        "turn_number": battle.turn_number + 1,
+        "units": units_state,
+        "boss": boss_state,
     }
+
+
+def get_skill_catalog(battle):
+    """
+    Static reference info that never changes turn to turn - roll ranges,
+    base damage, which skills hit all 3 party members at once, and the
+    boss's clash-bonus values - keyed the same way state's skill_number /
+    unit-index encoding is, so you only need to fetch this once per battle
+    (not every turn) and cross-reference it against the per-turn state.
+    """
+    boss_skills = []
+    for skill_number, skill_def in enumerate(battle.boss.skills):
+        boss_skills.append({
+            "skill_number": skill_number,
+            "name": skill_def.name,
+            "roll_lo": skill_def.roll_lo,
+            "roll_hi": skill_def.roll_hi,
+            "base_damage": skill_def.base_damage,
+            "hits_all": skill_def.hits_all,
+            "clash_roll_bonus": skill_def.clash_roll_bonus,
+            "clash_damage_multiplier": skill_def.clash_damage_multiplier,
+        })
+
+    party_units = []
+    for name in battle.units:
+        unit = battle.units[name]
+        party_units.append({
+            "name": name,
+            "skill1": {"name": unit.skill1.name, "roll_lo": unit.skill1.roll_lo,
+                       "roll_hi": unit.skill1.roll_hi, "base_damage": unit.skill1.base_damage},
+            "skill2": {"name": unit.skill2.name, "roll_lo": unit.skill2.roll_lo,
+                       "roll_hi": unit.skill2.roll_hi, "base_damage": unit.skill2.base_damage},
+        })
+
+    return {"boss_skills": boss_skills, "party_units": party_units}
 
 
 def commands_to_player_actions(battle, boss_slots, commands):

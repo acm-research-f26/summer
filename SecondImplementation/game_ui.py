@@ -47,7 +47,7 @@ from game_data import build_party_units, build_boss
 # ----------------------------------------------------------------------------
 # CONFIG
 # ----------------------------------------------------------------------------
-MANUAL_BOSS_MODE = True  # <-- the bool toggle. Can also be flipped in-app via checkbox.
+MANUAL_BOSS_MODE = False  # <-- the bool toggle. Can also be flipped in-app via checkbox.
 
 SCREEN_W, SCREEN_H = 1500, 720
 

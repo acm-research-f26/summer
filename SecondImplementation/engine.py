@@ -628,7 +628,7 @@ class Battle:
                 f"{dmg} damage to {self.boss.name} (boss hp now {self.boss.hp})"
             )
         # advance this unit's skill queue now that the skill has actually been used
-        unit.queue.pick(action.skill_type, position=action.armed_position)
+        unit.queue.select_skill(action.armed_position)
 
 
 # ----------------------------------------------------------------------------
