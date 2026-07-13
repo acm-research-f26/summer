@@ -36,12 +36,20 @@ As for rewards/punishments, currently it's done by if the battle was won/loss, b
 In the end, this is how it ended up looking. One thing is that I used AI to entirely create the game engine, because I was assuming that what I would actually code would be the PPO and MCPS related stuff (but little did I know, I was a lazy fraud).
 <img width="1867" height="931" alt="image" src="https://github.com/user-attachments/assets/0ffbbbdc-e5ce-4a79-b4ce-6461eaa3ef16" />
 
-
 2. **RL Setup**:
+This is whre I should mention something. While my intention was to impelemnt the RL and MCPS side entirely my self, I ended up running out of time to do so and had to vibe code that aspect of it, though I do understand most of the code. However, this is entirely on me as I procrastinated a lot and didn't manage my time as well.
 
-3. **Implementing Genetic Programming**:
+For the RL, I chose to use PPO because I wanted to learn a bit more about that type of RL model, and typically from my research I see it often as the best model for games. Anyways, we can just set up the model as mostly any other ML model, though we're passing in a flattened list consisting of all the data that will needed to be known about each of the players and the boss. We take reward as just that basic difference of loss in boss hp minus the loss in total player hp, though later we'd ahve wanted to add the other things i mentioned like if we got any staggered units or maybe if we won clashes too. Once again, we can also measure entropy to determine if the model is uncertain of its moves, in whih case it'll use MCTS.
+
+3. **Implementing The MCPS Side**:
+Once again I didn't exactly implement this myself, but I can talk a bit over how it works. Each time we call it, we start at the current state as the 'root' node. We then explore up to a certain number of playouts, where playouts consist of us taking moves until we reach a win or loss (which is clearly defined by us either beating the boss or having all our units die). 
+
+We also define going to different states by making differnet actions as separate nodes in a Graph (as basically what we have is a tree, with leaves being the end of the battle). Since each ndoe basically represents a state, we can store q value data for each node. 
+
+The concept is that each time we explore a playout, we add one more node to our tree, but don't add all the nodes along the playout as we make actions since that'd explode the size of the tree. Then, each time we restart a playout, we choose the leaf node we got to by a mix of random chance and which one has the best q value (currently). Each time we finish a playout, we can update all 3 q values (as in for MCTS, GRANT, and MCPS) by going back up the tree, seeing what states were involved and what actions are involved and updating so accordingly, using a dictionary mapping.
 
 4. **Results And Evaluation**:
+
 
 ## 🌍 Impact
 This project will allow game designers to design better systems for AI in games, especially when they may be unsure of how to design an AI in such an environment. They can just specify

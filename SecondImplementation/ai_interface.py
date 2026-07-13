@@ -330,6 +330,8 @@ def run_headless_battle(policy_fn, max_turns=60, seed=None, on_turn_end=None):
     battle = Battle(boss, units, rng=rng)
     arg_count = _policy_arg_count(policy_fn)
 
+    totalTime = 0
+
     for _ in range(max_turns):
         if not battle.boss.is_alive() or not battle.alive_units():
             break
@@ -337,11 +339,13 @@ def run_headless_battle(policy_fn, max_turns=60, seed=None, on_turn_end=None):
         state = build_state(battle, boss_slots)
 
         if arg_count >= 3:
-            commands = policy_fn(state, battle, boss_slots)
+            commands, time = policy_fn(state, battle, boss_slots)
         elif arg_count == 2:
-            commands = policy_fn(state, battle)
+            commands, time = policy_fn(state, battle)
         else:
-            commands = policy_fn(state)
+            commands, time = policy_fn(state)
+
+        totalTime += time
 
         actions = commands_to_player_actions(battle, boss_slots, commands)
         log = battle.resolve_turn(boss_slots, actions)
@@ -354,4 +358,4 @@ def run_headless_battle(policy_fn, max_turns=60, seed=None, on_turn_end=None):
         outcome = "loss"
     else:
         outcome = "draw"  # hit max_turns without either side being defeated
-    return {"outcome": outcome, "turns": battle.turn_number, "battle": battle}
+    return {"outcome": outcome, "turns": battle.turn_number, "battle": battle, "timePerTurn": totalTime / battle.turn_number}

@@ -543,9 +543,9 @@ if __name__ == "__main__":
 
 '''
 3 options to run:
-python ppo_train.py                        # train from scratch
-python ppo_train.py --resume checkpoint_50.pt  # resume training
-python ppo_train.py --eval finalModel.pt        # pure model, no MCPS
-python ppo_train.py --test finalModel.pt        # entropy-gated MCPS fallback
-python ppo_train.py --test finalModel.pt --episodes 200  # more episodes
+python SecondImplementation/ppo_train.py                        # train from scratch
+python SecondImplementation/ppo_train.py --resume checkpoint_50.pt  # resume training
+python SecondImplementation/ppo_train.py --eval finalModel.pt        # pure model, no MCPS
+python SecondImplementation/ppo_train.py --test finalModel.pt        # entropy-gated MCPS fallback
+python SecondImplementation/ppo_train.py --test finalModel.pt --episodes 200  # more episodes
 '''

@@ -64,6 +64,7 @@ just recomputed on demand from the global playout list, using the same
 import json
 import random
 from collections import defaultdict
+import time
 
 from ai_interface import run_headless_battle
 from ai_interface import commands_to_player_actions
@@ -213,6 +214,7 @@ class MCPSSearch:
         return len(matching), sum(matching) / len(matching)
 
     def _select_move(self, node, cursor, unit_name, legal_moves, path_codes_so_far):
+        
         ref = _find_reference_node(node, self.rho)
         # Shuffle so that ties (e.g. every candidate having zero data early
         # in the search) resolve to a DIFFERENT move across playouts, using
@@ -241,6 +243,7 @@ class MCPSSearch:
             key = (0 if n_tilde == 0 else 1, -val)
             if best_key is None or key < best_key:
                 best_key, best_move = key, move
+
         return best_move
 
     def run_one_playout(self, source_battle, boss_slots):
@@ -332,7 +335,8 @@ class MCPSSearch:
 # ----------------------------------------------------------------------------
 # Public entry point: an ai_interface-compatible policy function
 # ----------------------------------------------------------------------------
-def make_mcps_policy(num_playouts=500, rho=10, rollout_policy=None,
+def make_mcps_policy(num_playouts
+=500, rho=10, rollout_policy=None,
                       reward_win=1.0, reward_loss=-1.0, reward_draw=0.0, seed=None):
     """
     Returns a policy_fn(state, battle, boss_slots) suitable for
@@ -358,6 +362,8 @@ def make_mcps_policy(num_playouts=500, rho=10, rollout_policy=None,
     seed_rng = random.Random(seed)
 
     def policy_fn(state, battle, boss_slots):
+        startTime = time.time()
+        
         search = MCPSSearch(rho=rho, rollout_policy=rollout_policy,
                              reward_win=reward_win, reward_loss=reward_loss,
                              reward_draw=reward_draw, seed=seed_rng.random())
@@ -388,6 +394,22 @@ def make_mcps_policy(num_playouts=500, rho=10, rollout_policy=None,
             node = node.children.get(best_move) or MCPSNode(parent=node)
             cursor = cursor.apply_move(unit_name, best_move)
 
-        return [commands_by_unit[name] for name in cursor.actionable_names]
+        endTime = time.time()
+        return [commands_by_unit[name] for name in cursor.actionable_names], endTime - startTime
 
     return policy_fn
+
+numIterations = 20
+numWins = 0
+avgTurns = 0
+avgTime = 0
+for _ in range(numIterations):
+    result = run_headless_battle(make_mcps_policy(), seed=42)
+    if result["outcome"] == "win":
+        numWins += 1
+    
+    avgTurns += result["turns"] / numIterations
+
+    avgTime += result["timePerTurn"] / numIterations
+
+print(f"Winrate was {numWins / numIterations}%, avg turns is {avgTurns}, avg time per turn was {avgTime}")
