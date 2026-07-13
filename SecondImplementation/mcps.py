@@ -399,17 +399,18 @@ def make_mcps_policy(num_playouts
 
     return policy_fn
 
-numIterations = 20
-numWins = 0
-avgTurns = 0
-avgTime = 0
-for _ in range(numIterations):
-    result = run_headless_battle(make_mcps_policy(), seed=42)
-    if result["outcome"] == "win":
-        numWins += 1
-    
-    avgTurns += result["turns"] / numIterations
+if __name__ == "__main__":
+    numIterations = 20
+    numWins = 0
+    avgTurns = 0
+    avgTime = 0
+    for _ in range(numIterations):
+        result = run_headless_battle(make_mcps_policy(), seed=42)
+        if result["outcome"] == "win":
+            numWins += 1
+        
+        avgTurns += result["turns"] / numIterations
 
-    avgTime += result["timePerTurn"] / numIterations
+        avgTime += result["timePerTurn"] / numIterations
 
-print(f"Winrate was {numWins / numIterations}%, avg turns is {avgTurns}, avg time per turn was {avgTime}")
+    print(f"Winrate was {numWins / numIterations}%, avg turns is {avgTurns}, avg time per turn was {avgTime}")
