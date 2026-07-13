@@ -5,212 +5,42 @@
 # Integrating Monte Carlo Permutation Search (MCPS) to play RPG Games as a fallback for RL Models
 
 ## 📌 Project Summary
+Monte Carlo Tree Search (MCTS) is the idea of essentially simulating games in the future by branching out and exploring different options, while storing for each state (a set of actions from the current action) + proceeding action the overall 'value' of it, gotten by how many paths down from the current state end up with a win vs a loss.
 
+However, there come three issues with MCTS. First is that while it only stores information regarding how valuable the next immediate action is, while it could be useful to also store data about actions that happen later in the simulation we did that ended up being very powerful. Additionally, the state requirement is very strict in having to follow an exact combination, which makes it hard to find the truly best action since we don't exactly take into account maybe actions across various states as well and what their value ends up being. Finally, when exploring 'playouts' (which are basically simulating from the current state taking actions until reaching an end state), part of determining the playout chosen is based on which (s, a) nodes ended up having the highest probabilities (aka which starting actions looked the most promising to explore further), but since MCTS is quite strict with only updating the specific (s, a) pair each time a new playout is discovered, it takes a longer time to get accurate Q-values (how 'good' taking an action from a current state is) for those state-action pairs, potentially delaying the epxloration of the best actions in certain states. 
+
+This is where MCPS comes in, where it solves these problems by having a bit more relaxed value-filling by using the GRANT algorithm, which basically has Q(s, a) built where a is any action occuring in the playout from the state, not just the immediate next one, allowing us to see what actions in general end up being useful. It also adds its own permutation condition, where the states, which are normally an exact ordered set a(1)...a(n) of actions from the root (root being the start from which wer'e simulating), are now instead a subset of all the states in the playouts, basically noting down what actions tend to be good after a general set of previous actions rather than a strict ordered set of them.
+
+While they used MCPS on games of Go, I showed how it could be extended to other non-board games such as turn-based RPGs, by creating a system for that and then seeing how well MCPS performs. Additionally, I showed how we can use MCPS with regular RL as essentially a backup for when RL fails.
 
 ## 🎯 Motivation
-I really wanted to try something with genetic programming, and I also wanted to learn a bit more about behavior trees and how they're implemented since my research topic will involve AI in games, so coming across this paper seemed like a really good first starting point for the first implementation. Additionally, I chose to do DOOM for the game cause I thought it would be cool. 
+The main motivation behind this was that I wanted to work with RL while also exploring this idea of simulating the game using Monte Carlo methodologies. I also wanted to show it could specifically be combined with existing RL techniques to become even better, and potentially account for the drawbacks behind traditional RL.
+
+Additionally, I thought it would be a nice opportunity to make a turn based RPG specifically cause I could base it off a RPG game I have been playing quite a lot.
 
 ## 🧩 Novelty
-The main novelty in the paper itself is how it uses something it called 'dynamic constraints' to avoid a problem with the initial approach of using GP for Behavior Trees.
+The main novelty behind this is as mentioned in the project summary, having MCPS basically determine what actions are good from certain states by encoding on that state side not just the specific actions that would make up that state, but making it more general and basically expanding the state to be any of those actions done in any order along with other actions. This makes it so that when deciding which nodes to explore for a playout, it picks actions that perform generally well too, not just in a specific state. 
 
-GP has this feature for behavior trees called 'crossover', which is where you take 2 trees and swap 2 random subtrees between them (where those subtrees keep all their children). However, it turns out that this can be a problem because sometimes the subtree that is swapped over was part of a really good / effective subtree, and thus swapping it out for a new set of nodes underneath esssentailly breaks the logic that made the subtree work well.
+Additionally, my system currently uses PPO, a RL model, but intermingles it with MCPS. Basically, the idea was that usually a normal RL model would be good enough to play the game by itself. However, obviously an RL model is trained on data, but if it never gets data of certain scenarios, it won't know how to act in those scenarios. My project accounts for that though, as essentially we can measure the entropy of the model each time it makes an action (so how 'confident' the model is in its predictions, where if say its' a 55% probability of action 1 being the best and 45% chance of action 2 being the best, that'd be high entropy, while 99% and 1% for those actions would be low entropy, and 'confident'), and then if it has low confidence we can then use MCPS to simulate a few moves ahead to determine what is the best action to take.
 
-How the paper fixes this isssue is by introducing a dynamic constraint where after each run in a generation it uses FREQT on the highest scoring Behavior Trees, which looks at all the subtrees within the behavior trees and finds the most common ones. Then, it lowers the probability of these nodes being chosen for crossover. The idea is that it assumes since these subtrees were frequent within the most common trees, they must be 'good' subtrees that shouldn't be broken apart in any way, so it lowers the probability of such a thing happening.
-
-It also had a 'static constraint' that basically made the BT follow certain rules that constrained the size of it so it wouldn't explode, but this wasn't something i implemented.
-
-Additionally, as for the novelty I introduced, they originally tested their new methodology using the game Pac-Man, meanwhile I decided to test it by doing it on the game Doom instead since it'd be cooler.
+Finally, another novelty in what I do is adapt the MCPS model to a different game type than what it is normally used for. Typically, MCTS/MCPS is used for board games since they are easy to simulate in the future and its pretty simple to pick actions from them, as well as it being easy to reach an end state (that being when you win or lose). However, I noticed that you could also potentially use this model for Turn Based RPGs as they have most of the same elements, so I (aka Claude) had created a Turn Based RPG system to be able to test MCPS.
 
 ## 🧠 Methodology
 1. **Environment Construction**:
+First was actually building a game that I could use MCPS for. As mentioned earlier, I chose a turn based game cause I thought it'd be cool and interesting. As for what game to base it on, I actually decided to make it based on a game I'm currently playing, called 'Limbus Company'. It's a turn based game focused on teambuilding, 'clashing' against enmy skills to override them, and applying status effects to the enenmy, so I picked some of my favorite status effects to play in the game (mainly Burn and Tremor) and just directly implemented them in game. 
 
-One of the hardest parts was actually just getting the ideal environment to test the game in set up. The main issue was that VizDOOM came with only a few default scenarios, and of these I chose the Deathmatch one, where they're placed into an arena with a bunch of resources where enemies also get to spawn, and it basically has to try and survive for as long as possible while killing as many enemies as possible.
+The main things to note are that when passing into an RL model, it first passes in the current character and all their statuses, as well as upcomign skills, and what skills the boss will do as well as who it will target. Next, the player will then need to decide which of its 2 skills to use, and which skill on the boss's side to 'clash with' (or it can also attack unopposed).
 
-The main issue was that I wanted the player to spawn in with certain weapons, and to have the map open without walls between the player and resources unlike the default scenario. So for this what I had to do was actually install a Doom map editor, and physicallly remove the walls, as well as write a game scrip to give the player guns on startup. An issue I then ran into ws that this script would seem to override the control logic script VizDOOM had for the deathmatch scenario meaning all the other things like enemies spawning wouldn't work, so then I had to use a decompiler to get what the original Deathmatch code was like so that it could be added back in manually (thank god for Claude, I asked ChatGPT to decompile it initially but it kept being stupid). In the end though I was finally able to get the environment set up as I'd like, after learning a great deal about how Doom map design works lol.
-![alt text](image.png)
+As for rewards/punishments, currently it's done by if the battle was won/loss, but in the future for much longer fights where simulating the entire thing might be unrealistic, we could instead do it as having the reawrd/punishemnt be a turn step of how much damage was dealt to the boass that turn as the reward and how much damage the player's took as the punishment, and adding other things when needed (i.e. like punishing if a player got 'staggered').
 
-2. **Behavior Tree Setup**:
-Setting up the behavior tree itself was not too bad, I just had to define a tree system which I was able to do since I'd taken Data Structures. Then though, I had to define ALL the conditions and actions that would be possible myself, and boy that took a really long time. Conditions weren't so bad since it was just looking at the game state and looking at certain values for variables in that state, but for actions I had to create a system to press the right inputs and the right time and also determine when the action was complete, it was not exactly fun. For example for "Fire And Strafe", I had to make a system to find the angle at which the player was from the closest enemy, determine how to turn to make that angle smaller, and also determine what WASD keys should be pressed so that they'd be moving to the side of the enemy. Basically Geometry SUCKS.
+In the end, this is how it ended up looking. One thing is that I used AI to entirely create the game engine, because I was assuming that what I would actually code would be the PPO and MCPS related stuff (but little did I know, I was a lazy fraud).
 
-Creating the system to go through the tree evaluating conditions and seleccting an action wasn't too bad, I could just decide what child to go down based on the current node condition's value, and stop when I reached an action.
+
+2. **RL Setup**:
 
 3. **Implementing Genetic Programming**:
-This part was surprisingly not the hardest part. I had to do some research and thinking into how the GP side would work primarily; mutation was decently easy, and so was finding the best trees as I could sort the trees by score. For this aspect the most difficulty came from crossover, as I had to make sure the exact same subtrees weren't selected, make sure the 2 subtrees aren't from the same exact tree, reduce the probability of the crossover based on how far in depth the subrrees were (to make sure we wouldn't have abnormally short or long trees), and also reduce the prbability based on the dynamci constraint.
-
-To take care of that dynamic constraint actually, what I did was use soemthing called a 'Canonical Representation', where I would capture each unique subtree by storing the (nodeval, left, right) as the value for that subtree, where the "left" and "right" values would actually be filled in versions of recursively doing the same call on the left and right children of the root of the current subtree. Turns out this lets you compare subtreesperfectly surprisingly, it's like really really cool. But then we can see the count of each subtree with a hashmap, and if the count is above a predefined threshold, we can then mark all the nodes within that subtree (besides the root) as 'protected', so if we ever try to do a crossover involving those nodes then their probability is reduced.
 
 4. **Results And Evaluation**:
-For evaluating results, what I did was at the end of the final generation, take the top 3 trees, print out their structure, and then save them to files. Then, the "testTree" file lets you play with those trees. I forgot to print the scores, but here is an example of a behavior tree's struture:
-[COND] chaingunEquipped?
-  T:
-    [COND] lowAmmoCurrent?
-      T:
-        [COND] highHealth?
-          T:
-            [COND] armorNearby?
-              T:
-                [COND] lowHealth?
-                  T:
-                    [COND] manyEnemies?
-                      T:
-                        [ACTION] switchWeapon
-                      F:
-                        [ACTION] fireAndStrafe
-                  F:
-                    [COND] lowTimeRemaining?
-                      T:
-                        [ACTION] goToArmor
-                      F:
-                        [ACTION] fireAndStrafe
-              F:
-                [COND] healthNearby?
-                  T:
-                    [COND] highArmor?
-                      T:
-                        [ACTION] switchWeapon
-                      F:
-                        [ACTION] directlyFlee
-                  F:
-                    [COND] someRangedEnemy?
-                      T:
-                        [ACTION] goToHealth
-                      F:
-                        [ACTION] goToAmmo
-          F:
-            [COND] ammo3Nearby?
-              T:
-                [COND] lowHealth?
-                  T:
-                    [COND] ammo4Nearby?
-                      T:
-                        [ACTION] directlyFlee
-                      F:
-                        [ACTION] chargeIn
-                  F:
-                    [COND] noEnemies?
-                      T:
-                        [ACTION] goToArmor
-                      F:
-                        [ACTION] switchWeapon
-              F:
-                [COND] mediumArmor?
-                  T:
-                    [COND] manyEnemies?
-                      T:
-                        [ACTION] directlyFlee
-                      F:
-                        [ACTION] goToHealth
-                  F:
-                    [COND] mediumHealth?
-                      T:
-                        [ACTION] moveRandom
-                      F:
-                        [ACTION] directlyFlee
-      F:
-        [ACTION] switchWeapon
-  F:
-    [COND] mediumArmor?
-      T:
-        [COND] manyEnemies?
-          T:
-            [COND] mediumHealth?
-              T:
-                [COND] highArmor?
-                  T:
-                    [COND] lowAmmoCurrent?
-                      T:
-                        [ACTION] switchWeapon
-                      F:
-                        [ACTION] directlyFlee
-                  F:
-                    [COND] lowAmmoCurrent?
-                      T:
-                        [ACTION] directlyFlee
-                      F:
-                        [ACTION] fireAndStrafe
-              F:
-                [COND] nearbyEnemy?
-                  T:
-                    [ACTION] fireAndStrafe
-                  F:
-                    [COND] ammo3Nearby?
-                      T:
-                        [ACTION] directlyFlee
-                      F:
-                        [ACTION] switchWeapon
-          F:
-            [ACTION] directlyFlee
-      F:
-        [COND] recentlyHurt?
-          T:
-            [COND] lowAmmoCurrent?
-              T:
-                [COND] lowHealth?
-                  T:
-                    [COND] manyEnemies?
-                      T:
-                        [ACTION] fireAndStrafe
-                      F:
-                        [ACTION] runAway
-                  F:
-                    [COND] lowTimeRemaining?
-                      T:
-                        [ACTION] fireAndStrafe
-                      F:
-                        [ACTION] fireAndStrafe
-              F:
-                [COND] noEnemies?
-                  T:
-                    [COND] highArmor?
-                      T:
-                        [ACTION] directlyFlee
-                      F:
-                        [ACTION] goToArmor
-                  F:
-                    [COND] mediumHealth?
-                      T:
-                        [ACTION] goToHealth
-                      F:
-                        [ACTION] goToHealth
-          F:
-            [COND] lowTimeRemaining?
-              T:
-                [COND] ammo4Nearby?
-                  T:
-                    [COND] ammo3Nearby?
-                      T:
-                        [ACTION] goToArmor
-                      F:
-                        [ACTION] runAway
-                  F:
-                    [COND] nearbyEnemy?
-                      T:
-                        [ACTION] fireAndStrafe
-                      F:
-                        [ACTION] chargeIn
-              F:
-                [COND] mediumHealth?
-                  T:
-                    [COND] someRangedEnemy?
-                      T:
-                        [ACTION] moveRandom
-                      F:
-                        [ACTION] switchWeapon
-                  F:
-                    [COND] lowHealth?
-                      T:
-                        [ACTION] goToArmor
-                      F:
-                        [ACTION] goToArmor
-
-One thing is it does look a bit bloated and in general some of the logic doesn't make sense, but some of it does. For example, you can see for the nearbyEnemy condition, if there is one nearby it will fire at it, otherwise it will try to charge wherever they are, which makes sense. However, there is also weird stuff, like the condition  near the top where if there's many enemies it will try tos witch enemies, which is weird.
-
-When playing with the trees though it's a bit unusual, it looks like it doesn't actually end up firing its gun often and it just tries to run awaound in circles often. I think this might be an issue with the movement but I'm not entirely sure, this is something I'll look into later.
-
-Another change I'd like to make is adding more generations, as it actually turns out you may want around 20 or more generations to run though instead of a measly 5. Overall the results show that it's learning something, but a lot of tuning can still be done.
-
-#### Additional Methodology:
-- **Something optional**: Sentence
 
 ## 🌍 Impact
 This project will allow game designers to design better systems for AI in games, especially when they may be unsure of how to design an AI in such an environment. They can just specify
