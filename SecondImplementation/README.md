@@ -51,6 +51,10 @@ The concept is that each time we explore a playout, we add one more node to our 
 4. **Results And Evaluation**:
 <img width="746" height="47" alt="image" src="https://github.com/user-attachments/assets/b1b1f07a-40b0-4935-9d65-ad5aedd1b3b2" />
 
+<img width="996" height="116" alt="image" src="https://github.com/user-attachments/assets/79384fe8-ceb9-4250-a75c-f5d843d5b70b" />
+
+<img width="1000" height="127" alt="image" src="https://github.com/user-attachments/assets/db4c06ed-a8ea-4246-814f-cdab14a00100" />
+
 
 ## 🌍 Impact
 This project will allow game designers to design better systems for AI in games, especially when they may be unsure of how to design an AI in such an environment. They can just specify
@@ -66,10 +70,9 @@ Moving away from the behavior tree, it'd also be nice to try to adapt this to ot
 Finally, it may be interesting to try to further expand on the GP side of things. One thing I'd like to do is change the dynamic constraint so instead of picking common subtrees, it picks trees that overall perform effectively instead, which can be say evaluatied by something like summing up the scores of all the actions within that subtree or similar. It may also be more interesting to just look further into the GP side in general.
 
 **Additional Sources:**
-- The actual paper: https://www.mdpi.com/2076-3417/8/7/1077
-- VizDoom Library: https://vizdoom.farama.org/
+- The actual paper: https://arxiv.org/pdf/2510.06381
 
 **Setup Guide:**
-First, you have to install 2 python libraries. First is vizdoom (which is for DOOM and its api), and second is numpy. You can install these with the command "pip install numpy vizdoom".
+First, you have to install 2 python libraries. First is pygame and second is numpy. You can install these with the command "pip install numpy vizdoom".
 
 After this, just run "deathmatchGame.ipynb" (you can set variables you'd like to change in constants.py), wait for it to finish, and then run testTree.ipynb to see how the trees perform. That should be it I think.
