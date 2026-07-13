@@ -55,13 +55,15 @@ One thing you can notice though is that the time per turn is decently long, at a
 
 <img width="746" height="47" alt="image" src="https://github.com/user-attachments/assets/b1b1f07a-40b0-4935-9d65-ad5aedd1b3b2" />
 
+
 Meanwhile, for the pure RL model, we find that it doesn't perform nearly as well as the MSPS. One thing I ran earlier was seeing how well you do if you just randomly pick actions and it turns out to be about 3%, so we can see since the accuracy is still about 24% that at least it's learning something. The reason as to why this may be happening is due to how I didn't actually have the RL running for long enough, I think I only had it running for about 500 episodes. We do see though of course that inference is much faster though.
 
-<img width="1000" height="127" alt="image" src="https://github.com/user-attachments/assets/db4c06ed-a8ea-4246-814f-cdab14a00100" />
+<img width="996" height="116" alt="image" src="https://github.com/user-attachments/assets/79384fe8-ceb9-4250-a75c-f5d843d5b70b" />
+
 
 Meanwhile, moving onto the hybrid RL model where we use MCPS when it's less confident, we found that it performed much better than pure RL, though still not perfectly like just pure MCPS. There can be multiple reasons for why. First is that it's just possible that MCPS taking over was quite rare as usually the model ended up being confident, which doesn't really help in our case since our model isn't trained very well. Another possibility is that typically by the time the RL model passed control over to MCPS, its possible the situation was so bad that not even MCPS could recover from it, so basically it was already doomed to lose by that point. Overall though we notice the latency much higher now than pure RL but still only like sub 2 ms, meaning that this is definietely viable for turn based games or even FPS games if we wanted to do that.
 
-<img width="996" height="116" alt="image" src="https://github.com/user-attachments/assets/79384fe8-ceb9-4250-a75c-f5d843d5b70b" />
+<img width="1000" height="127" alt="image" src="https://github.com/user-attachments/assets/db4c06ed-a8ea-4246-814f-cdab14a00100" />
 
 
 
