@@ -49,6 +49,7 @@ We also define going to different states by making differnet actions as separate
 The concept is that each time we explore a playout, we add one more node to our tree, but don't add all the nodes along the playout as we make actions since that'd explode the size of the tree. Then, each time we restart a playout, we choose the leaf node we got to by a mix of random chance and which one has the best q value (currently). Each time we finish a playout, we can update all 3 q values (as in for MCTS, GRANT, and MCPS) by going back up the tree, seeing what states were involved and what actions are involved and updating so accordingly, using a dictionary mapping.
 
 4. **Results And Evaluation**:
+<img width="746" height="47" alt="image" src="https://github.com/user-attachments/assets/b1b1f07a-40b0-4935-9d65-ad5aedd1b3b2" />
 
 
 ## 🌍 Impact
