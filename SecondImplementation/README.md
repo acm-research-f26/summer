@@ -34,6 +34,7 @@ The main things to note are that when passing into an RL model, it first passes 
 As for rewards/punishments, currently it's done by if the battle was won/loss, but in the future for much longer fights where simulating the entire thing might be unrealistic, we could instead do it as having the reawrd/punishemnt be a turn step of how much damage was dealt to the boass that turn as the reward and how much damage the player's took as the punishment, and adding other things when needed (i.e. like punishing if a player got 'staggered').
 
 In the end, this is how it ended up looking. One thing is that I used AI to entirely create the game engine, because I was assuming that what I would actually code would be the PPO and MCPS related stuff (but little did I know, I was a lazy fraud).
+<img width="1867" height="931" alt="image" src="https://github.com/user-attachments/assets/0ffbbbdc-e5ce-4a79-b4ce-6461eaa3ef16" />
 
 
 2. **RL Setup**:
