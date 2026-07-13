@@ -21,6 +21,7 @@ import argparse
 import random
 from collections import defaultdict
 from pathlib import Path
+import time
 
 import torch
 import torch.nn as nn
@@ -177,6 +178,8 @@ def run_episode(model, mcps_policy, seed=None):
     prev_party_hp   = None
 
     def policy_fn(state, battle, boss_slots):
+        startTime = time.time()
+        
         nonlocal prev_boss_hp, prev_party_hp, pending_transitions
 
         # --- assign reward to last turn's transitions ---
@@ -254,7 +257,8 @@ def run_episode(model, mcps_policy, seed=None):
                 })
 
         pending_transitions = this_turn
-        return commands
+        endTime = time.time()
+        return commands, (endTime - startTime)
 
     result = run_headless_battle(policy_fn, seed=rng.randint(0, 2**31), max_turns=MAX_TURNS)
 
@@ -264,7 +268,7 @@ def run_episode(model, mcps_policy, seed=None):
         t["reward"] = terminal
     transitions.extend(pending_transitions)
 
-    return transitions, result["outcome"]
+    return transitions, result["outcome"], result["turns"], result["timePerTurn"]
 
 
 # ----------------------------------------------------------------------------
@@ -377,7 +381,7 @@ def train(resume_path=None):
             seed = update * NUM_EPISODES_PER_UPDATE + ep
             # no MCPS during training - model learns entirely from its own
             # decisions. MCPS is only used at inference (see evaluate()).
-            transitions, outcome = run_episode(model, mcps_policy=None, seed=seed)
+            transitions, outcome, _, _ = run_episode(model, mcps_policy=None, seed=seed)
             transitions = compute_returns(transitions)
             all_transitions.extend(transitions)
             outcomes[outcome] += 1
@@ -420,6 +424,8 @@ def evaluate(model_path, n_episodes=100):
     model.eval()
 
     def greedy_policy(state, battle, boss_slots):
+        startTime = time.time()
+        
         commands      = []
         claimed_slots = set()
         num_real_slots = sum(1 for p in state["boss"]["chosen_skills"] if p != [-1, -1])
@@ -436,17 +442,23 @@ def evaluate(model_path, n_episodes=100):
                 if target != 0:
                     claimed_slots.add(target)
                 commands.append([skill, target])
-        return commands
+        endTime = time.time()
+        return commands, endTime - startTime
 
     outcomes = defaultdict(int)
+    avgTurns = 0
+    avgTimePerTurn = 0
     for seed in range(n_episodes):
         result = run_headless_battle(greedy_policy, seed=seed, max_turns=MAX_TURNS)
         outcomes[result["outcome"]] += 1
+        avgTurns += result["turns"] / n_episodes
+        avgTimePerTurn += result["timePerTurn"] / n_episodes
 
     print(f"Evaluation (model only) over {n_episodes} episodes:")
     print(f"  wins:   {outcomes['win']:3d}  ({outcomes['win']/n_episodes*100:.1f}%)")
     print(f"  losses: {outcomes['loss']:3d}  ({outcomes['loss']/n_episodes*100:.1f}%)")
     print(f"  draws:  {outcomes['draw']:3d}  ({outcomes['draw']/n_episodes*100:.1f}%)")
+    print(f"Oh also, avg turns is {avgTurns} and avg time per turn is {avgTimePerTurn}")
 
 
 def test_with_mcps(model_path, n_episodes=100):
@@ -467,6 +479,7 @@ def test_with_mcps(model_path, n_episodes=100):
     total_decisions = 0
 
     def hybrid_policy(state, battle, boss_slots):
+        startTime = time.time()
         nonlocal mcps_fired, total_decisions
         commands      = []
         claimed_slots = set()
@@ -505,11 +518,16 @@ def test_with_mcps(model_path, n_episodes=100):
                 if target != 0:
                     claimed_slots.add(target)
                 commands.append([skill, target])
-        return commands
+        endTime = time.time()
+        return commands, endTime - startTime
 
+    avgTurns = 0
+    avgTimePerTurn = 0
     for seed in range(n_episodes):
         result = run_headless_battle(hybrid_policy, seed=seed, max_turns=MAX_TURNS)
         outcomes[result["outcome"]] += 1
+        avgTurns += result["turns"] / n_episodes
+        avgTimePerTurn += result["timePerTurn"] / n_episodes
 
     gate_rate = mcps_fired / total_decisions if total_decisions else 0
     print(f"Hybrid test (model + MCPS fallback, threshold={ENTROPY_THRESHOLD}) over {n_episodes} episodes:")
@@ -517,6 +535,7 @@ def test_with_mcps(model_path, n_episodes=100):
     print(f"  losses: {outcomes['loss']:3d}  ({outcomes['loss']/n_episodes*100:.1f}%)")
     print(f"  draws:  {outcomes['draw']:3d}  ({outcomes['draw']/n_episodes*100:.1f}%)")
     print(f"  MCPS gate fired on {mcps_fired}/{total_decisions} decisions ({gate_rate*100:.1f}%)")
+    print(f"Oh also, avg turns is {avgTurns} and avg time per turn is {avgTimePerTurn}")
 
 
 # ----------------------------------------------------------------------------
