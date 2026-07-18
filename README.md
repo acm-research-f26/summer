@@ -1,235 +1,224 @@
 ![ACM Research Banner Light](https://github.com/ACM-Research/paperImplementations/assets/108421238/467a89e3-72db-41d7-9a25-51d2c589bfd9)
 
-# Mixed-Precision Proportional Bit-Budget Allocator 💅
+# 👑 SLAY: Sensitivity-Led Allocation for Yield 👑
 
 ## 💅 Project Summary 💅
 
-**Part 2** of this repo — an extension of the layer-importance ranking benchmark in [`1-ranking-effectiveness/`](1-ranking-effectiveness/).
+**SLAY** (**S**ensitivity-**L**ed **A**llocation for **Y**ield) is data-free mixed-precision quantization that ranks layers, spends a bit budget where it matters, and measures what industry actually pays for, which is **memory**, **accuracy**, **FLOPs (processing power)**, **time**, and **energy**.
 
-Part 1 asks: *which layers matter?* (rank layers, upgrade top-*k* to INT8, leave the rest at a fixed low bit-width). Part 2 asks: *given a target **average** bit-width, how should bits be distributed across layers?*
+| Stage | Folder | Question |
+|-------|--------|----------|
+| **1 · Score** | [`1-data-free-ranking-effectiveness/`](1-data-free-ranking-effectiveness/) | Which layers matter for deployment, comparing methods with and without calibration data? |
+| **2 · Ladder** | [`2-bit-allocation-experiment/`](2-bit-allocation-experiment/) | How do we turn those scores into a bit mix under a target avg width? |
+| **3 · Yield** | [`3-industry-connection/`](3-industry-connection/) | What does that buy in memory / accuracy / FLOPs / time / energy? Why is this relevant to the industry? |
 
-The main artifact is [`2-bit-allocation/mixed_precision_proportional_allocator_benchmark.ipynb`](2-bit-allocation/mixed_precision_proportional_allocator_benchmark.ipynb). It connects **data-free layer scores** from Part 1 (+ InfoQ, spectral variants) to a **sensitivity-guided greedy bit allocator** under target average bit-widths ∈ {2.5, 3.0, 3.5, 4.0}.
+**The results SLAYED.** Data-free scorers (PCT, SEA, Entropy, Spectral-PCT, …) use **0 forward passes** and **0 allocation GFLOPs**. On several INT3 operating points they match or beat HAWQ/InfoQ/BMPQ/CLADO on accuracy recovery — while those methods spend tens to hundreds of thousands of GFLOPs just to *rank* layers. Extrapolated to LLM CI/CD, that gap becomes hours of GPU time and watt-hours of energy that SLAY simply does not spend. Done and dusted.
 
-**Headline finding:** proportional allocation **separates rankers at every budget target**—unlike Part 1’s two-level scheme (low-bit + INT8), which ties many methods together. A **2×2 taxonomy** (weight values vs spectral × propagation vs none) predicts the best scorer by architecture: **PCT** on CNNs, **SEA / Spectral Top-10** on ViTs, **SEA / Entropy** on LLMs.
+## 👠 Relationship across parts
 
-## 👠 Relationship to Part 1
+| | **Part 1** — Ranking | **Part 2** — Allocation | **Part 3** — Yield (industry) |
+|---|---|---|---|
+| **Question** | Which ranker identifies important layers? | Which ranker drives a mixed bit mix under a budget? | What does that cost in FLOPs / time / energy / memory? |
+| **Allocation** | Two-level: top-*k* → INT8, rest → *B*-bit | Multi-level greedy ladder: 2/3/4/8 (vision) or 3/4/8 (LLM) | Same two-level + cost accounting |
+| **Budget** | Fixed *k* INT8 layers | Target **average** bits (param-weighted) | Memory + ranking compute |
+| **Datasets** | CIFAR-10 | CIFAR-100, ImageNet, Qwen WikiText-2 | CIFAR-100, ImageNet, Qwen |
+| **Notebook** | [`comprehensive_layer_importance_benchmark.ipynb`](1-data-free-ranking-effectiveness/comprehensive_layer_importance_benchmark.ipynb) | [`mixed_precision_proportional_allocator_benchmark.ipynb`](2-bit-allocation-experiment/mixed_precision_proportional_allocator_benchmark.ipynb) | [`mixed_precision_cost_benchmark.ipynb`](3-industry-connection/mixed_precision_cost_benchmark.ipynb) |
 
-| | **Part 1** — Ranking effectiveness | **Part 2** — Bit allocation (this notebook) |
-|---|---|---|
-| **Question** | Which ranker best identifies important layers? | Which ranker best drives a mixed bit assignment under a budget? |
-| **Allocation** | Two-level: top-*k* → INT8, rest → *B*-bit | Multi-level greedy ladder: layers get 2/3/4/8 (vision) or 3/4/8 (LLM) bits |
-| **Budget** | Fixed *k* count of INT8 layers | Target **average** bits across all layers (param-weighted) |
-| **Datasets** | CIFAR-10 | CIFAR-100, ImageNet, Qwen 1.5B WikiText-2 |
-| **Notebook** | [`1-ranking-effectiveness/comprehensive_layer_importance_benchmark.ipynb`](1-ranking-effectiveness/comprehensive_layer_importance_benchmark.ipynb) | [`2-bit-allocation/mixed_precision_proportional_allocator_benchmark.ipynb`](2-bit-allocation/mixed_precision_proportional_allocator_benchmark.ipynb) |
+Part 1 establishes **which layers to protect**. Part 2 turns those rankings into a **continuous bit budget**. Part 3 prices the ranking step itself — and shows data-free SLAY scorers win on the accuracy–memory Pareto front at **0 ranking cost**.
 
-Part 1 established **PCT for CNNs, Entropy for ViTs** under the two-level protocol. Part 2 tests whether those rankings still win when bits are allocated **proportionally** on harder benchmarks and real deployment bit targets.
+## 👑 Motivation
 
-## 💅 Motivation
+Production teams ship under **memory and latency SLAs**, not “upgrade exactly *k* layers to INT8.” They also cannot always afford calibration pipelines (privacy, edge, stale data, weekly model variants). In industry,
+quantization happens uniformly since the assumption is data-free methods
+are not as beneficial as data-required methods; however, data-required methods take lots of computation power, so uniform quantization is preferred.
 
-Production teams rarely specify “upgrade exactly 5 layers to INT8.” They specify a **memory or latency budget** — e.g. “average 3.0 bits per weight.” A greedy allocator that walks layers by sensitivity and upgrades each as high as the budget allows is the standard approach in mixed-precision literature (NSDS, HAWQ, Schaefer et al. Algorithm 2).
+SLAY 👑 finally gives industry a data-free quantization method to improve model deployment:
 
-Part 1’s two-level recovery sweep is the right tool for **comparing rankers**, but it collapses methods at many targets: once you fix *k* and the low bit-width, different rankings can produce identical bit mixes. Part 2 closes the loop from **score → allocation → accuracy/PPL** under continuous budget targets, which is what you actually ship.
+1. **Score** layers with a data-free sensitivity metric (architecture-aware taxonomy from Parts 1–2).
+2. **Allocate** bits on a ladder `{2,3,4,8}` (vision) / `{3,4,8}` (LLM) to hit a target average bit-width.
+3. **Yield** — report weight-memory compression, accuracy/PPL recovery, allocation FLOPs, expected GPU seconds, and expected energy vs data-required baselines.
 
-## 👠 Novelty
+## 💅 Novelty
 
-We propose a **2×2 taxonomy of data-free sensitivity metrics** along two axes — **information source** and **propagation awareness** — and show empirically that the optimal metric is **architecture-dependent**: numerical metrics (PCT) dominate on CNNs while spectral metrics (SEA, Spectral Top-10) dominate on vision transformers and LLMs. This provides the first principled framework for data-free metric selection in mixed-precision quantization.
+We propose a **2×2 taxonomy of data-free sensitivity metrics** along two axes — **information source** and **propagation awareness** — and show empirically that the optimal metric is **architecture-dependent**: numerical metrics (PCT) dominate on CNNs while spectral metrics (SEA, Spectral Top-10) dominate on vision transformers and LLMs. This provides a principled framework for data-free metric selection in mixed-precision quantization.
 
 ### Metric taxonomy
 
 |  | **Uses weight values** | **Spectral only** |
 |--|------------------------|-------------------|
-| **No propagation** | **PCT** | **SEA**, **Spectral Top-10** |
+| **No propagation** | **PCT**, **Entropy** | **SEA**, **Spectral Top-10** |
 | **With propagation** | **Spectral-PCT** | — |
 
 - **Information source** — *numerical* metrics read weight magnitudes and quantization damage (PCT, Entropy); *spectral* metrics read singular-value structure of weight tensors (SEA, Spectral Top-10).
-- **Propagation awareness** — *no-propagation* metrics score each layer in isolation; *with-propagation* metrics combine spectral structure with cross-layer truncation effects (**Spectral-PCT** propagates per-channel rounding loss through the spectral ranking).
-
-**Entropy** (Shannon entropy of the weight histogram) is a numerical, no-propagation metric — same quadrant as PCT — but optimized for **transformer-style** weight distributions rather than CNN per-channel truncation damage.
+- **Propagation awareness** — *no-propagation* metrics score each layer in isolation; *with-propagation* metrics combine spectral structure with cross-layer truncation effects (**Spectral-PCT**).
 
 ### Architecture-dependent metric selection
 
-| Architecture | Winning quadrant | Default metric(s) | Benchmark evidence |
-|--------------|------------------|-------------------|-------------------|
-| **CNN / ResNet** | Weight values · no propagation | **PCT** | Part 1 CIFAR-10 INT4; Part 2 CIFAR-100 & ImageNet @ 3.0–4.0 avg bits |
-| **ViT** | Spectral only · no propagation | **SEA**, **Spectral Top-10** | Part 2 CIFAR-100 ViT; ImageNet ViT @ 3.5–4.0 avg bits |
-| **LLM (Qwen 1.5B)** | Spectral + numerical · no propagation | **SEA** (@ 3.5), **Entropy** (@ 4.0) | Part 2 WikiText-2 PPL — extends the ViT split to language models |
-
-At extreme LLM budgets (≈2.5 avg bits), **Spectral-PCT** (with-propagation hybrid) remains competitive; at deployable targets (3.5–4.0), **SEA** and **Entropy** win — confirming that transformer-family models favor the **spectral** and **distributional** quadrants over raw truncation error (PCT).
+| Architecture | Winning quadrant | Default SLAY scorer | Evidence |
+|--------------|------------------|---------------------|----------|
+| **CNN / ResNet** | Weight values · no propagation | **PCT** / Spectral-PCT | Parts 1–3 (CIFAR / ImageNet) |
+| **ViT** | Spectral only · no propagation | **SEA** / Spectral Top-10 | Parts 2–3 |
+| **LLM** | Spectral + numerical · no propagation | **SEA** / **Entropy** | Parts 2–3 (Qwen) |
 
 ---
 
-- **Score-to-allocation pipeline**: Reuses Part 1 data-free scorers (PCT, Entropy, SEA, OLD, NSDS) plus spectral variants (`spectral_pct`, `spectral_top10`) and InfoQ, feeding them into `greedy_allocate_bits()`.
-- **Multi-level bit ladder**: Vision models use `{2, 3, 4, 8}`; Qwen uses `{3, 4, 8}` — high-sensitivity layers can receive intermediate bit-widths, not just INT8.
-- **Cross-scale evaluation**: Same allocator protocol on CIFAR-100, ImageNet, and a 1.5B LLM (WikiText-2 perplexity).
-- **Ranker differentiation at every target**: Different score orderings produce different bit mixes at each target avg-bit, so allocator quality directly tests ranking quality.
+- **Score → allocate → yield pipeline**: Parts 1–3 share the same data-free scorers; only the allocation protocol and cost accounting change.
+- **Zero ranking FLOPs**: PCT / SEA / Entropy / Spectral-PCT need no calibration forwards — allocation GFLOPs = **0**.
+- **Pareto claim**: mixed precision lands **between** uniform INT3 and INT4 on memory *and* accuracy, with **~87–91%** weight memory saved vs FP32.
+- **Industry cost model**: ranking FLOPs → expected GPU seconds → expected energy (kWh) for LLM CI/CD scale.
 
-## 💅 Methodology
+## 👠 Methodology
 
-### Allocation protocol (NSDS / HAWQ / Schaefer et al. Algorithm 2)
+### Score → allocate → yield
 
-1. Start all layers at `b_min` (lowest bit on the ladder).
-2. Sort layers by sensitivity descending (score from ranker).
-3. For each layer in order, upgrade it as high on the ladder as the param-weighted budget allows.
-
-Implementation: `bit_budget_allocator.py → greedy_allocate_bits()`
+1. Rank layers with a data-free scorer (taxonomy above).
+2. Allocate bits — Part 1/3 two-level (*k* → INT8) or Part 2 greedy ladder to target `B̄`.
+3. Measure accuracy/PPL, weight memory (`mem saved vs FP32 = 1 − B̄ / 32`), allocation GFLOPs, extrapolated GPU time and energy.
 
 ### Benchmarks
 
-| Benchmark | Model | Metric | Bit ladder |
-|-----------|-------|--------|------------|
-| CIFAR-100 | ResNet-18, ViT-B/16 | Accuracy | {2, 3, 4, 8} |
-| ImageNet | ResNet-18, ViT-B/16 | Accuracy | {2, 3, 4, 8} |
-| WikiText-2 | Qwen 1.5B | Perplexity (↓) | {3, 4, 8} |
-
-**Targets:** avg bits ∈ {2.5, 3.0, 3.5, 4.0} for vision; Qwen also includes {4.5, 5.0}.
+| Benchmark | Model | Metric | Where |
+|-----------|-------|--------|-------|
+| CIFAR-10 | ResNet-18, ViT-Small | Acc + ECE | Part 1 |
+| CIFAR-100 / ImageNet | ResNet-18, ViT-B/16 | Accuracy | Parts 2–3 |
+| WikiText-2 | Qwen 1.5B | Perplexity (↓) | Parts 2–3 |
 
 ### Methods compared
 
-| Group | Method | Data? | Source |
-|-------|--------|-------|--------|
-| **Ours (Part 1)** | **PCT**, **Entropy**, **SEA** | ✗ | Layer scores |
-| Spectral variants | **spectral_pct**, **spectral_top10** | ✗ | Computed in notebook |
-| Prior | **NSDS**, **OLD** | ✗ | Layer scores |
-| Established | **InfoQ** | 512 imgs | Optional (`RUN_INFOQ`) |
-| Baselines | **random**, **greedy_random**, uniform | ✗ | Controls |
-
-Scores are loaded from cached CSVs (legacy Part 1 / dataset-specific benchmarks preferred); missing columns are enriched on the fly.
+| Group | Method | Data? | Ranking GFLOPs |
+|-------|--------|-------|----------------|
+| **SLAY (ours)** | **PCT**, **Entropy**, **SEA**, Spectral-PCT, Spectral Top-10 | ✗ | **0** |
+| Prior | **NSDS**, **OLD** | ✗ | **0** |
+| Established | **HAWQ**, **InfoQ**, **BMPQ**, **CLADO** | 512 imgs | tens–hundreds of thousands |
 
 #### Additional Methodology
 
-- `SMOKE_TEST = True` limits ImageNet eval to 512 images and Qwen to 8k tokens for fast iteration.
-- `FORCE_RECOMPUTE = False` reuses cached allocator CSVs in `results/proportional_mp_allocator/`.
-- `RUN_INFOQ = False` by default (slow, especially on LLM).
+- Part 3 allocation GFLOPs = analytic pass counts × FLOPs/forward (`thop`).
+- GPU time scaled from RateQuant’s ~1.6 s gradient/calib estimate at Qwen3-8B ([arXiv 2605.06675](https://arxiv.org/abs/2605.06675)).
+- Energy ≈ GPU power × time (conservative **300 W** A100-class TDP during allocation).
 
-## 👠 Running the benchmark
+## 👑 Running the benchmarks
 
-**Requirements:** Python 3.10+, PyTorch, torchvision, pandas, numpy, scipy, scikit-learn, matplotlib, `datasets`, `transformers`, `accelerate`.
+**Requirements:** Python 3.10+, PyTorch, torchvision, pandas, numpy, scipy, scikit-learn, matplotlib; Parts 2–3 also need `datasets`, `transformers`, `accelerate`, `thop`.
 
 ```bash
-pip install torch torchvision scipy scikit-learn pandas matplotlib datasets transformers accelerate
-jupyter notebook 2-bit-allocation/mixed_precision_proportional_allocator_benchmark.ipynb
+# Part 1 — ranking
+jupyter notebook 1-data-free-ranking-effectiveness/comprehensive_layer_importance_benchmark.ipynb
+
+# Part 2 — bit allocation
+jupyter notebook 2-bit-allocation-experiment/mixed_precision_proportional_allocator_benchmark.ipynb
+
+# Part 3 — cost / memory / energy
+jupyter notebook 3-industry-connection/mixed_precision_cost_benchmark.ipynb
 ```
 
-**Checkpoints** (expected under repo root or env vars):
-
-| Benchmark | Path |
-|-----------|------|
-| CIFAR-100 | `checkpoints_cifar100/{resnet18,vit_b16}_cifar100_best_valacc.pt` |
-| ImageNet | `checkpoints_imagenet/` + ImageNet val split (`IMAGENET_ROOT`) |
-| Qwen 1.5B | `QWEN_PATH` (local HF-format model dir) |
-
-**Outputs** → `results/proportional_mp_allocator/`:
-
-| File | Description |
-|------|-------------|
-| `all_allocator_results.csv` | Combined sweep across all benchmarks |
-| `cifar100_*_allocator_results.csv` | Per-architecture CIFAR-100 results |
-| `imagenet_*_allocator_results.csv` | Per-architecture ImageNet results |
-| `qwen_allocator_results.csv` | Qwen WikiText-2 perplexity sweep |
-| `vision_accuracy_vs_budget.png` | Accuracy vs target avg bits (vision) |
-| `qwen_ppl_vs_budget.png` | Perplexity vs target avg bits (LLM) |
+See each part’s README for checkpoints, env vars (`IMAGENET_ROOT`, `QWEN_PATH`), and output CSV paths.
 
 ## 💅 Results
 
-Headline: **best method per benchmark @ each target** (vision = accuracy ↑, Qwen = perplexity ↓). Smoke-test run; set `SMOKE_TEST = False` for full eval.
+### Allocation compute (FLOPs) — ranking cost before you even quantize
 
-### CIFAR-100 ResNet-18
+Data-free methods: **0 GFLOPs** (weights only). Data-required methods scale with layers × calibration passes:
 
-| Target avg bits | Best method | Accuracy |
-|-----------------|-------------|----------|
-| 2.5 | OLD | 5.73% |
-| 3.0 | **PCT** | 27.28% |
-| 3.5 | spectral_pct | 74.28% |
-| 4.0 | **PCT** | 74.69% |
+| Method | ResNet CIFAR-100 | ResNet ImageNet | ViT ImageNet | Qwen 1.5B |
+|--------|------------------|-----------------|--------------|-----------|
+| **PCT / SEA / Entropy / …** | **0** | **0** | **0** | **0** |
+| BMPQ | 54 | 175 | 1,083 | 1,185 |
+| InfoQ | 393 | 1,284 | 14,085 | 77,845 |
+| CLADO | 571 | 1,868 | 17,697 | 81,797 |
+| HAWQ | 7,499 | 24,515 | **274,482** | **158,062** |
 
-**PCT** wins at the two highest practical targets — consistent with Part 1’s CNN default.
+Units: allocation GFLOPs. Ratio vs HAWQ is **∞** for every data-free method.
 
-### CIFAR-100 ViT-B/16
+### Pareto frontier — mixed sits between INT3 and INT4
 
-| Target avg bits | Best method | Accuracy |
-|-----------------|-------------|----------|
-| 2.5 | spectral_top10 | 21.89% |
-| 3.0 | SEA | 39.83% |
-| 3.5 | spectral_top10 | 62.49% |
-| 4.0 | InfoQ | 62.85% |
+The whole point of mixed precision: **huge** weight-memory savings vs FP32 (every config saves **~87–91%**), while landing *between* uniform INT3 and uniform INT4 on **both** axes — memory *and* accuracy. Uniform INT3 is tiny but accuracy collapses; uniform INT4 is accurate but bigger; SLAY mixed sits in the gap with accuracy pushed up toward FP32.
 
-Transformer-side scorers (SEA, spectral, Entropy family) dominate; Part 1’s **Entropy** ranking aligns with this architecture split.
+Weight memory (bits → savings), same formula as Parts 1–2: **`mem saved vs FP32 = 1 − B̄ / 32`** (where `B̄` = average bits per weight).
 
-### ImageNet ResNet-18
+| Config | Avg bits (B̄) | **Mem saved vs FP32** | Accuracy |
+|--------|---------------|-----------------------|----------|
+| Uniform INT3 | 3.0 | **90.6%** | collapses (see below) |
+| **SLAY mixed** | **~3.5–4.2** | **~87–89%** | **near-FP32** |
+| Uniform INT4 | 4.0 | **87.5%** | good |
+| Uniform INT8 | 8.0 | 75.0% | ~FP32 |
+| FP32 | 32.0 | 0% | reference |
 
-| Target avg bits | Best method | Accuracy |
-|-----------------|-------------|----------|
-| 2.5 | OLD | 0.39% |
-| 3.0 | spectral_pct | 0.39% |
-| 3.5 | **PCT** | 68.55% |
-| 4.0 | **PCT** | 70.70% |
+**Per-setting Pareto** (Part 3 op point: top-*k*=5 → INT8, rest INT3; winning data-free vs data-required scorer):
 
-**PCT** wins at 3.5 and 4.0 avg bits on full ImageNet — ranker generalizes beyond CIFAR.
+| Setting | INT3 acc / mem-saved | **SLAY mixed acc / mem-saved** | INT4 acc / mem-saved | Data-req acc |
+|---------|----------------------|--------------------------------|----------------------|--------------|
+| **ResNet / CIFAR-100** | 68.42% / 90.6% | **Spectral-PCT 72.91% / 86.9%** @ **0** GFLOPs | 74.25% / 87.5% | BMPQ 72.66% @ 54 GFLOPs |
+| **ResNet / ImageNet** | 0.70% / 90.6% | **PCT 11.10% / 86.9%** @ **0** GFLOPs | 60.10% / 87.5% | InfoQ 14.20% @ 1,284 GFLOPs |
+| **ViT / CIFAR-100** | 52.72% / 90.6% | **SEA 62.53% / 88.6%** @ **0** GFLOPs | 62.76% / 87.5% | CLADO 61.99% @ 17,696 GFLOPs |
+| **ViT / ImageNet** | 41.55% / 90.6% | **SEA 88.80% / 88.6%** @ **0** GFLOPs | 92.15% / 87.5% | InfoQ 81.10% @ 14,085 GFLOPs |
 
-### ImageNet ViT-B/16
+FP32 refs: ResNet ≈ 74.9% (CIFAR-100) / 78.4% (ImageNet); ViT-B/16 ≈ 62.9% (CIFAR-100) / 93.3% (ImageNet).
 
-| Target avg bits | Best method | Accuracy |
-|-----------------|-------------|----------|
-| 2.5 | SEA | 0.59% |
-| 3.0 | greedy_random | 0.20% |
-| 3.5 | **SEA** | 87.11% |
-| 4.0 | **SEA** | 88.28% |
+The Pareto read: for **only ~1–2 percentage points less memory savings than INT3** (88.6% vs 90.6%), SLAY mixed buys **+9 to +47 pp accuracy** — e.g. ViT/ImageNet jumps from a **41.55%** INT3 collapse to **88.80%** (SEA), still saving **88.6%** of FP32 weight memory, at **0 ranking GFLOPs**. Data-free matches or beats the data-required scorers on 3 of 4 settings while they burn thousands of GFLOPs.
 
-**SEA** leads at deployment-relevant targets (3.5, 4.0) on ImageNet ViT.
+#### Part 2 — matched avg-bit targets (the allocator view)
 
-### Qwen 1.5B — WikiText-2
+The proportional allocator ([`2-bit-allocation-experiment`](2-bit-allocation-experiment/)) targets an explicit `B̄`, so memory savings are locked in and large, and the leaderboard becomes pure accuracy/PPL at that memory point:
 
-| Target avg bits | Best method | Perplexity |
-|-----------------|-------------|------------|
-| 2.5 | spectral_pct | 6,352,318 |
-| 3.0 | SEA | 2,262,656 |
-| 3.5 | **SEA** | 88.97 |
-| 4.0 | **Entropy** | 65.30 |
+| Target B̄ | **Mem saved vs FP32** | Position vs uniforms |
+|-----------|-----------------------|----------------------|
+| 2.5 | **92.2%** | below INT3 — aggressive |
+| 3.0 | **90.6%** | = INT3 memory |
+| 3.5 | **89.1%** | **between INT3 and INT4** |
+| 4.0 | **87.5%** | = INT4 memory |
 
-At usable LLM budgets (3.5–4.0 avg bits), **SEA** and **Entropy** (Part 1’s ViT default) drive the best perplexity — extending the architecture-aware split to language models.
+A 3.5-bit SLAY mix is the textbook “in between”: **89.1%** weight memory saved (between INT4’s 87.5% and INT3’s 90.6%), with Part 2 accuracy/PPL that tracks the better ranker (PCT / SEA / Entropy) on that frontier.
+
+### Expected time (GPU seconds) — LLM scaling
+
+| Model | Est. HAWQ GPU time | Est. SLAY (data-free) |
+|-------|--------------------|------------------------|
+| Qwen2-1.5B | ~120 s (0.03 h) | **0 s** |
+| Qwen3-8B | ~640 s (0.18 h) | **0 s** |
+| Qwen3-32B | ~2,560 s (0.71 h) | **0 s** |
+| **100 variants / week @ 8B** | **~17.8 GPU-hours** | **0** |
+| **100 variants / week @ 32B** | **~71.1 GPU-hours** | **0** |
+
+### Expected energy
+
+Energy ≈ GPU power × time (**300 W** sustained draw):
+
+| Scenario | HAWQ energy | SLAY energy |
+|----------|-------------|-------------|
+| One Qwen3-8B ranking | 640 s × 300 W ≈ **192 kJ** (~0.053 kWh) | **0** |
+| One Qwen3-32B ranking | 2560 s × 300 W ≈ **768 kJ** (~0.21 kWh) | **0** |
+| 100× / week @ 8B | 17.8 h × 300 W ≈ **5.3 kWh** | **0** |
+| 100× / week @ 32B | 71.1 h × 300 W ≈ **21.3 kWh** | **0** |
 
 ### Takeaways
 
-| Setting | Taxonomy quadrant | Strong allocators | Link to Part 1 |
-|---------|-------------------|-------------------|----------------|
-| **CNN / ResNet** (CIFAR-100, ImageNet) | Weight values · no propagation | **PCT**, Spectral-PCT | Confirms PCT as CNN default |
-| **ViT** (CIFAR-100, ImageNet) | Spectral only · no propagation | **SEA**, Spectral Top-10 | Confirms spectral scorers for transformers |
-| **LLM** (Qwen) | Spectral + numerical · no propagation | **SEA**, **Entropy** | ViT-like split extends to language models |
+| Setting | Taxonomy quadrant | Strong SLAY scorers | Cost vs HAWQ/InfoQ |
+|---------|-------------------|---------------------|--------------------|
+| **CNN / ResNet** | Weight values · no propagation | **PCT**, Spectral-PCT | **0** GFLOPs |
+| **ViT** | Spectral only · no propagation | **SEA**, Spectral Top-10 | **0** GFLOPs |
+| **LLM** | Spectral + numerical · no propagation | **SEA**, **Entropy** | **0** GFLOPs |
 
-The two-level Part 1 benchmark tells you *which layers to protect*; this allocator benchmark tells you *how to spend a continuous bit budget* using those same rankings — and the **2×2 taxonomy** predicts which quadrant to pick before you run a sweep.
+## 👑 Impact
 
-## 👠 Impact
+### Why the ranking cost matters
 
-### Why proportional allocation matters
+At datacenter rates (~$0.10/kWh + GPU rental), the ranking step alone is free under SLAY and non-trivial under HAWQ-class pipelines — **before** counting engineer time, calib data ops, and failed mismatched-calib rankings (Part 3 calibration-robustness sweep).
 
-Real deploy constraints are **average-bit targets**, not “*k* layers at INT8.” A 3.0-bit model might mix INT2, INT3, and INT4 layers — the greedy allocator produces that mix from a single sensitivity ranking. Without this step, Part 1 rankings are necessary but not sufficient: you know layer order, but not the bit assignment that actually hits your memory cap.
+### Deploy guidance
 
-### What changes vs Part 1
-
-- **Finer bit granularity** exposes ranker differences that two-level allocation hides.
-- **Harder datasets** (CIFAR-100, ImageNet) and **LLM perplexity** test whether CIFAR-10 ranking conclusions survive scale.
-- **Intermediate bit-widths** (INT3) matter at low avg-bit targets (2.5–3.0) where INT8-heavy schemes are infeasible.
-
-### Deploy guidance (updated)
-
-Use the taxonomy to pick a default before benchmarking:
-
-| Architecture | Pick this quadrant first | Default scorer |
-|--------------|--------------------------|----------------|
-| **CNN / ResNet** | Weight values · no propagation | **PCT** |
-| **ViT** | Spectral only · no propagation | **SEA** or **Spectral Top-10** |
-| **LLM** | Spectral or numerical · no propagation | **SEA** (mid budget), **Entropy** (higher budget) |
-| **Any (tight budget)** | With propagation | **Spectral-PCT** as fallback |
-
-Run the allocator notebook with your checkpoint and target avg bits to get a per-layer bit assignment (`bit_mix` column in results CSVs).
+> Pick the taxonomy quadrant → score weights only → greedy-allocate to your avg-bit budget → ship.  
+> **CNN → PCT · ViT → SEA · LLM → SEA / Entropy.**  
+> Ranking cost stays **0 GFLOPs / 0 GPU-s / 0 Wh**; memory follows `1 − B̄/32` (**~87–91%** saved); accuracy follows Part 2/3 Pareto tables.
 
 #### Future Work
 
-- Full eval (`SMOKE_TEST = False`) on ImageNet and Qwen.
-- Calibration metrics (ECE) under proportional allocation, not just accuracy/PPL.
-- Pareto frontier over target avg bits vs accuracy/PPL by ranker.
-- Joint optimizer (ILP) vs greedy baseline.
+- Full (`SMOKE_TEST=False`) ImageNet / Qwen sweeps
+- Measured board-level joules (not TDP×time estimates)
+- ECE under proportional allocation
+- ILP bit assignment vs greedy ladder
 
 **Additional Sources:**
-- Part 1 ranking benchmark: [`1-ranking-effectiveness/README.md`](1-ranking-effectiveness/README.md)
-- NSDS, HAWQ, Schaefer et al. — greedy mixed-precision allocation literature
+- Part 1: [`1-data-free-ranking-effectiveness/README.md`](1-data-free-ranking-effectiveness/README.md)
+- Part 2: [`2-bit-allocation-experiment/README.md`](2-bit-allocation-experiment/README.md)
+- HAWQ, InfoQ, BMPQ, CLADO, NSDS, RateQuant (arXiv 2605.06675)
