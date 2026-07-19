@@ -1,0 +1,587 @@
+{
+ "ONE_1.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.8
+  },
+  "top_category": "other",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the preselected checkbox for receiving exclusive offers and updates.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.8}}"
+ },
+ "ONE_2.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.9,
+   "scarcity": 0.8,
+   "social_proof": 0.1,
+   "guilt_wording": 0.1,
+   "other": 0.1
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of urgency and scarcity to pressure users to keep their membership.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.9, \"scarcity\": 0.8, \"social_proof\": 0.1, \"guilt_wording\": 0.1, \"other\": 0.1}}"
+ },
+ "ONE_3.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.9,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the presence of a countdown timer indicating a limited-time deal.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.9, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "ONE_4.png": {
+  "is_dark": 0.6,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.8,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "social_proof",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of social proof with a recent-activity popup showing \"Emily from Austin just bought this\" and a purchase-count banner stating \"238 people purchased this today.\"\n\n{\"is_dark\": 0.6, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.8, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "ONE_5.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.8,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "scarcity",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of a special offer with a discounted price and a limited time, which can be seen as a form of scarcity.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.8, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "ONE_6.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.8
+  },
+  "top_category": "other",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the cookie consent pop-up.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.8}}"
+ },
+ "ONE_7.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there is no evidence of any dark patterns present.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "ONE_8.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of guilt wording in the \"No thanks, I hate saving money\" opt-out option.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "ONE_9.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.8,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "scarcity",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is the scarcity element, with a low-stock warning indicating only 2 left in stock.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.8, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "ONE_10.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.9,
+   "scarcity": 0.1,
+   "social_proof": 0.1,
+   "guilt_wording": 0.1,
+   "other": 0.1
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the countdown timer indicating a limited-time deal.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.9, \"scarcity\": 0.1, \"social_proof\": 0.1, \"guilt_wording\": 0.1, \"other\": 0.1}}"
+ },
+ "TWO_1.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there are no signs of urgency, scarcity, social proof, guilt wording, or other manipulation techniques present.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "TWO_2.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.8
+  },
+  "top_category": "other",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the cookie consent pop-up.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.8}}"
+ },
+ "TWO_3.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there are no signs of urgency, scarcity, social proof, guilt wording, or other manipulation techniques.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "TWO_4.png": {
+  "is_dark": 0.3,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.3
+  },
+  "top_category": "other",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of a 7-day trial offer with a low price to encourage users to try the premium version.\n\n{\"is_dark\": 0.3, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.3}}"
+ },
+ "TWO_5.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.9,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is the presence of a limited time offer with a countdown timer.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.9, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "TWO_6.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.8,
+   "social_proof": 0.8,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "scarcity",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of scarcity tactics, such as the \"We have 1 left at this price!\" message and the \"12 people are viewing this hotel\" indicator.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.8, \"social_proof\": 0.8, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "TWO_7.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of guilt wording in the opt-out option.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "TWO_8.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.8
+  },
+  "top_category": "other",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the cookie consent banner with a \"Reject Non-Essential\" button.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.8}}"
+ },
+ "TWO_9.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there are no signs of urgency, scarcity, social proof, guilt wording, or other manipulation techniques present.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "TWO_10.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.9,
+   "scarcity": 0.8,
+   "social_proof": 0.1,
+   "guilt_wording": 0.1,
+   "other": 0.1
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of urgency and scarcity.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.9, \"scarcity\": 0.8, \"social_proof\": 0.1, \"guilt_wording\": 0.1, \"other\": 0.1}}"
+ },
+ "THREE_1.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of guilt wording in the \"No, I do not care about fees\" button.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "THREE_2.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of guilt wording in the \"No thanks, I like losing my plans\" option.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "THREE_3.png": {
+  "is_dark": 0.3,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is the presence of a \"Make it monthly\" button, which could be seen as a form of guilt wording.\n\n{\"is_dark\": 0.3, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "THREE_4.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.8
+  },
+  "top_category": "other",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of a preselected control for accepting personalization.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.8}}"
+ },
+ "THREE_5.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of guilt wording in the \"Keep me subscribed\" button.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "THREE_6.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of guilt wording in the opt-out option.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "THREE_7.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of guilt wording in the \"No thanks, I enjoy overpaying for delivery\" link.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "THREE_8.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of guilt wording in the \"No, my team can waste time\" button.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "THREE_9.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of guilt wording in the \"Are you sure you want to leave Premium?\" prompt.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "THREE_10.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of guilt wording in the opt-out option.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "FOUR_1.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there are no signs of urgency, scarcity, social proof, guilt wording, or other manipulation techniques.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "FOUR_2.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there are no signs of urgency, scarcity, social proof, guilt wording, or other manipulation techniques.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "FOUR_3.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the emphasis on sales and discounts, which can be seen through the \"Pet Essentials Sale\" banner and the highlighted sale items.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "FOUR_4.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the absence of any elements that would indicate urgency, scarcity, social proof, guilt wording, or other manipulation techniques.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "FOUR_5.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there are no signs of urgency, scarcity, social proof, guilt wording, or other manipulation techniques.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "FOUR_6.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.8,
+   "scarcity": 0.8,
+   "social_proof": 0.1,
+   "guilt_wording": 0.1,
+   "other": 0.1
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of urgency and scarcity to pressure users.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.8, \"scarcity\": 0.8, \"social_proof\": 0.1, \"guilt_wording\": 0.1, \"other\": 0.1}}"
+ },
+ "FOUR_7.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there are no signs of urgency, scarcity, social proof, guilt wording, or other manipulation techniques present.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "FOUR_8.png": {
+  "is_dark": 0.3,
+  "categories": {
+   "urgency": 0.8,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of a \"Weekend Home Sale\" banner, which could be a form of urgency manipulation.\n\n{\"is_dark\": 0.3, \"categories\": {\"urgency\": 0.8, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "FOUR_9.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.8,
+   "scarcity": 0.8,
+   "social_proof": 0.1,
+   "guilt_wording": 0.1,
+   "other": 0.1
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of urgency and scarcity elements.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.8, \"scarcity\": 0.8, \"social_proof\": 0.1, \"guilt_wording\": 0.1, \"other\": 0.1}}"
+ },
+ "FIVE_1.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there are no signs of urgency, scarcity, social proof, guilt wording, or other manipulation techniques.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "FIVE_2.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the presence of a \"Keep current plan\" button, which is a form of guilt wording.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "FIVE_3.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.8
+  },
+  "top_category": "other",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the presence of a cookie consent banner with preselected options.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.8}}"
+ },
+ "FIVE_4.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.8
+  },
+  "top_category": "other",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the \"Allow notifications\" button, which is emphasized with a blue background and a prominent position.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.8}}"
+ },
+ "FIVE_5.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there are no signs of urgency, scarcity, social proof, guilt wording, or other manipulation techniques present.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "FIVE_6.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.8
+  },
+  "top_category": "other",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of a prominent \"Accept all\" button, which could be seen as a form of pressure to accept cookies.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.8}}"
+ }
+}

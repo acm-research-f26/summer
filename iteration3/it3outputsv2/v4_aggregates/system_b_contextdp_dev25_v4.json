@@ -1,0 +1,327 @@
+{
+ "droom.in.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there are no signs of urgency, scarcity, social proof, guilt wording, or other manipulation techniques.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "groupon.com.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.8,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "scarcity",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of scarcity tactics, specifically the \"Sold Out\" message and the \"See Similar Deals\" button.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.8, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "dipyourcar.com.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.8
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of a preselected checkbox for \"No, I have a DYC Sprayer already\" and the absence of a clear \"No thanks, I don't want to save money\" option.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.8}}"
+ },
+ "healthyhempoil.com.png": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there are no signs of urgency, scarcity, social proof, guilt wording, or other manipulation techniques present.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "herringshoes.co.uk.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.8,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "scarcity",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the use of scarcity to pressure users to act quickly.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.8, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "house_of_fraser-blog-full.jpg": {
+  "is_dark": 0.3,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.8,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "scarcity",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation is that there is a low-stock warning indicating that there are only 7 left in stock.\n\n{\"is_dark\": 0.3, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.8, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "www.stealthangelsurvival.com.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.8,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "scarcity",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the scarcity element, with a low-stock warning indicating \"only 47 left in stock.\"\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.8, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "www.thertastore.com.png": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.9,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the presence of a countdown timer for the \"End of Summer Sale\" with a deadline of 0 days, 10 hours, 38 minutes, and 28 seconds.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.9, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "10013.jpg": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.9,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the presence of a countdown timer.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.9, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "1058.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "I do not observe any dark patterns on this screen.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "1091.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "I do not observe any dark patterns on this screen.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "1376.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "I do not observe any dark patterns on this screen.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "1397.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation is that there are no dark patterns present on this screen.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "1414.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the \"Service Temporarily Unavailable\" message, which does not pressure or mislead users.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "1418.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "I do not observe any dark patterns on this screen.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "113.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "I do not observe any dark patterns on this screen.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "1238_IpgL3JU.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant observation about dark patterns on this screen is that there are no signs of urgency, scarcity, social proof, guilt wording, or other manipulation techniques present.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "12733.jpg": {
+  "is_dark": 0.3,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.3
+  },
+  "top_category": "other",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the preselected checkbox for receiving updates, special offers, and other information from Marvel, its affiliates, and its promotional partners.\n\n{\"is_dark\": 0.3, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.3}}"
+ },
+ "entertainment_19--Face-Secret-Master-5-15_5310.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "I see no signs of dark patterns on this screen.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "music_14--Voice-Recorder-1-41_e6bb.jpg": {
+  "is_dark": 0.8,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.8,
+   "other": 0.0
+  },
+  "top_category": "guilt_wording",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the \"Rate me 5 stars\" prompt.\n\n{\"is_dark\": 0.8, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.8, \"other\": 0.0}}"
+ },
+ "entertainment_16--Color-by-Number-4-39_0423.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "I do not observe any dark patterns on this screen.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "entertainment_2--Google-Play-Games-0-17-a_1a70.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "The most relevant thing I observe about dark patterns on this screen is the preselected options for \"Let others see your game activity\" and \"Let others find your profile using your email address,\" which are both turned off by default.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "music_30--Music-Bass-Equalizer-0-12_24d3.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "I do not observe any dark patterns on this screen.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "entertainment_19--Face-Secret-Master-0-58_e91a.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "I do not observe any dark patterns on this screen.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ },
+ "entertainment_19--Face-Secret-Master-0-21_5fda.jpg": {
+  "is_dark": 0.0,
+  "categories": {
+   "urgency": 0.0,
+   "scarcity": 0.0,
+   "social_proof": 0.0,
+   "guilt_wording": 0.0,
+   "other": 0.0
+  },
+  "top_category": "urgency",
+  "parse_failed": false,
+  "raw_response": "I see no dark patterns on this screen.\n\n{\"is_dark\": 0.0, \"categories\": {\"urgency\": 0.0, \"scarcity\": 0.0, \"social_proof\": 0.0, \"guilt_wording\": 0.0, \"other\": 0.0}}"
+ }
+}
