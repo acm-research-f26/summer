@@ -8,6 +8,8 @@ danger(enemy) :-
 nearby(enemy).
 armed(enemy).
 
+should_raise_alarm() :- 
+
 %! term_to_json(+Term, -Json) is det.
 %  Recursively converts a Prolog term into a JSON-safe structure.
 term_to_json(Term, Json) :-

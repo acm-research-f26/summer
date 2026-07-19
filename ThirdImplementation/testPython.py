@@ -1,9 +1,9 @@
 import subprocess
 import json
 
-def run_scasp(query: str, pl_file="test.pl", swipl_path="swipl"):
+def run_scasp(query: str):
     result = subprocess.run(
-        [swipl_path, pl_file, query],
+        ["swipl", "pl_file", query],
         capture_output=True,
         text=True,
         timeout=30
@@ -11,6 +11,7 @@ def run_scasp(query: str, pl_file="test.pl", swipl_path="swipl"):
     if result.returncode != 0:
         raise RuntimeError(f"swipl failed: {result.stderr}")
     return json.loads(result.stdout.strip())
+
 
 if __name__ == "__main__":
     # 1. Ask "is enemy dangerous, and why" — finds X that satisfies danger(X)
