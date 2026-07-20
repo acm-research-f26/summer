@@ -44,4 +44,16 @@ public class PlayerScript : MonoBehaviour
             if (contact.normal.y > 0.7f) isJumping = false;
         }
     }
+
+    void OnTriggerEnter2D(Collider2D collision)
+    {
+        if(collision.gameObject.name == "exit-door" && collision.gameObject.GetComponent<ExitEscape>().activated && GameManagerScript.instance.diamondStolen )
+        {
+            GameManagerScript.instance.WinGame();
+        }
+        else if(collision.gameObject.name == "the-hole" && collision.gameObject.GetComponent<HoleEscape>().activated && GameManagerScript.instance.diamondStolen )
+        {
+            GameManagerScript.instance.WinGame();
+        }
+    }
 }
