@@ -1,9 +1,15 @@
 import subprocess
 import json
+import os
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+prolog_file = os.path.join(current_dir, "test.pl")
+
+print(prolog_file)
 
 def run_scasp(query: str):
     result = subprocess.run(
-        ["swipl", "pl_file", query],
+        ["swipl", prolog_file, query],
         capture_output=True,
         text=True,
         timeout=30
@@ -15,21 +21,5 @@ def run_scasp(query: str):
 
 if __name__ == "__main__":
     # 1. Ask "is enemy dangerous, and why" — finds X that satisfies danger(X)
-    data = run_scasp("danger(X)")
+    data = run_scasp("chosen_action(X)")
     print(data)
-    # {'bindings': {'X': 'enemy'}, 'model': ['nearby(enemy)', 'armed(enemy)', 'danger(enemy)'], 'ok': True}
-
-    # 2. Ask a fully ground query — no variables, just true/false
-    data = run_scasp("danger(enemy)")
-    print(data)
-    # {'bindings': {}, 'model': [...], 'ok': True}   <- succeeds, bindings empty since no vars
-
-    # 3. Ask something that should fail
-    data = run_scasp("danger(civilian)")
-    print(data)
-    # {'ok': False, 'error': 'no solution'}   <- no facts support this
-
-    # 4. Ask about a sub-fact directly
-    data = run_scasp("armed(X)")
-    print(data)
-    # {'bindings': {'X': 'enemy'}, 'model': [...], 'ok': True}
