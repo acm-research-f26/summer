@@ -23,6 +23,7 @@ public class DiamondScript : MonoBehaviour
             renderer.sprite = destroyedSprite;
             GameManagerScript.instance.diamondStolen = true;
             audioController.Play();
+            GameManagerScript.soundOccurred.Invoke(transform.position);
         }
     }
 

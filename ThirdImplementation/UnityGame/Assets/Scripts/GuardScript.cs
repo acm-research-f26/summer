@@ -11,7 +11,7 @@ public enum CurrentAction
 public class GuardScript : MonoBehaviour
 {
     CurrentAction currentBehavior;
-    Vector2 lastPlayerPointSpotted;
+    public Vector2 lastPlayerPointSpotted;
     Vector2 targetPosition;
     Vector2 lastSound;
     float movementSpeed;
@@ -32,15 +32,19 @@ public class GuardScript : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
 
         GameManagerScript.lockdownInitiated += OnLockdown;
+
+        GameManagerScript.soundOccurred += OnSound;
     }
 
     CurrentAction PickNewAction()
     {
-        CurrentAction chosenAction = (CurrentAction) Random.Range(1, 4);
+        CurrentAction chosenAction = (CurrentAction) Random.Range(1, 5);
         if(chosenAction == CurrentAction.WanderToRandomPlace)
         {
             targetPosition = new Vector2(Random.Range(-73f, 180f), transform.position.y);
         }
+
+        Debug.Log($"chosen action is {chosenAction}");
 
         return chosenAction;
 
@@ -48,16 +52,16 @@ public class GuardScript : MonoBehaviour
 
     void DoMoveAction()
     {
-        Vector2 movingPosition = Vector2.MoveTowards(transform.position, targetPosition, movementSpeed * Time.deltaTime);
+        Vector2 movingPosition = Vector2.MoveTowards(transform.position, new Vector2(targetPosition.x, transform.position.y), movementSpeed * Time.deltaTime);
         rb.MovePosition(movingPosition);
-        if(Vector2.Distance(movingPosition, targetPosition) < 15f)
+        if(Vector2.Distance(transform.position, targetPosition) < 1f)
         {
             currentBehavior = PickNewAction();
         }
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
         switch (currentBehavior)
         {
@@ -79,13 +83,15 @@ public class GuardScript : MonoBehaviour
             default:
                 break;
         }
-        if(rb.linearVelocityX < 0)
-        {
-            transform.localScale = new Vector2(-1, transform.localScale.y);
-        }
-        else if(rb.linearVelocityX > 0)
+
+        float direction = targetPosition.x - transform.position.x;
+        if(direction < 0)
         {
             transform.localScale = new Vector2(1, transform.localScale.y);
+        }
+        else if(direction > 0)
+        {
+            transform.localScale = new Vector2(-1, transform.localScale.y);
         }
     }
 
@@ -98,11 +104,11 @@ public class GuardScript : MonoBehaviour
         audiosource.Play();
     }
 
-    void OnTriggerEnter2D(Collider2D collision)
+    void OnSound(Vector2 location)
     {
-        if(collision.gameObject.name == "Player" && GameManagerScript.instance.inLockdown)
+        if(Vector2.Distance(transform.position, location) < 50f)
         {
-            GameManagerScript.instance.LoseGame();
+            lastSound = location;
         }
     }
 }

@@ -22,6 +22,7 @@ public class VaseScript : MonoBehaviour
             alreadyDestroyed = true;
             renderer.sprite = destroyedSprite;
             soundController.Play();
+            GameManagerScript.soundOccurred.Invoke(transform.position);
             transform.position = new Vector2(transform.position.x + 1, transform.position.y);
         }
     }

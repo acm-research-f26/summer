@@ -55,5 +55,11 @@ public class PlayerScript : MonoBehaviour
         {
             GameManagerScript.instance.WinGame();
         }
+        else if(collision.gameObject.name == "sahur" && GameManagerScript.instance.inLockdown)
+        {
+            GameManagerScript.instance.LoseGame();
+        }
+
+        
     }
 }

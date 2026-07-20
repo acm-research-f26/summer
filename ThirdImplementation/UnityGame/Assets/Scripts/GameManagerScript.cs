@@ -17,6 +17,7 @@ public class GameManagerScript : MonoBehaviour
     public bool inLockdown;
     public TextMeshProUGUI winText;
     public TextMeshProUGUI loseText;
+    public static Action<Vector2> soundOccurred;
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
