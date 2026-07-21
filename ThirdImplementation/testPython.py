@@ -2,6 +2,7 @@ import subprocess
 import json
 import os
 import asyncio
+import shutil
 import websockets
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,7 +22,8 @@ def run_scasp(query: str):
     return json.loads(result.stdout.strip())
 
 async def handler(socket):
-    with open("rules.pl", "a") as factsFile:
+    shutil.copy("rules.pl", "rules_temp.pl")
+    with open("rules_temp.pl", "a") as factsFile:
         print("client connected!")
         try:
             async for message in socket:
@@ -39,8 +41,7 @@ async def handler(socket):
                 elif(jsonMessage["message_type"] == "alarm_raised"):
                     factsFile.write("alarm_raised.\n")
                 elif(jsonMessage["message_type"] == "get_action"):
-                    data = run_scasp("chosen_action(X)")
-                    returnedDict = json.loads(data)
+                    returnedDict = run_scasp("chosen_action(X)")
                     returnedArr = returnedDict["solutions"]
                     solutionArr = []
                     for solution in returnedArr:
@@ -49,12 +50,16 @@ async def handler(socket):
                     await socket.send(json.dumps(solutionArr))
                 else:
                     raise ValueError(f"json message is invalid, got {jsonMessage['message_type']}")
+                
+                factsFile.flush()
 
 
         except websockets.ConnectionClosed:
             print("Client disconnected")
 
-if __name__ == "__main__":
-    # 1. Ask "is enemy dangerous, and why" — finds X that satisfies danger(X)
-    data = run_scasp("chosen_action(X)")
-    print(data)
+async def mainTask():
+    async with websockets.serve(handler, "localhost", 6767):
+        print("WebSocket server running!")
+        await asyncio.Future()
+
+asyncio.run(mainTask())

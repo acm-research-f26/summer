@@ -1,7 +1,7 @@
 :- use_module(library(scasp)).
 :- use_module(library(http/json)).
 
-:- consult('rules.pl').
+:- consult('rules_temp.pl').
 
 % here's all the things i'd need to add:
 % on "noise", just whenever noise heard update that. pretty simple.
