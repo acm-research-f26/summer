@@ -66,17 +66,40 @@ bindings_to_json([Name=Value|T], Json) :-
 main :-
     current_prolog_flag(argv, [QueryAtom]),
     catch(
-        (   term_string(Query, QueryAtom, [variable_names(Bindings)]),
-            (   scasp(Query, [model(Model)])
-            ->  bindings_to_json(Bindings, BindingsJson),
-                term_to_json(Model, ModelJson),
-                Result = _{ok: true, bindings: BindingsJson, model: ModelJson}
-            ;   Result = _{ok: false, error: "no solution"}
+        (
+            term_string(Query, QueryAtom, [variable_names(Bindings)]),
+
+            findall(
+                _{
+                    bindings: BindingsJson,
+                    model: ModelJson
+                },
+                (
+                    scasp(Query, [model(Model)]),
+                    bindings_to_json(Bindings, BindingsJson),
+                    term_to_json(Model, ModelJson)
+                ),
+                Solutions
+            ),
+
+            (   Solutions \= []
+            ->  Result = _{
+                    ok: true,
+                    solutions: Solutions
+                }
+            ;   Result = _{
+                    ok: false,
+                    error: "no solution"
+                }
             )
         ),
         Error,
-        ( term_string(Error, ErrStr),
-          Result = _{ok: false, error: ErrStr}
+        (
+            term_string(Error, ErrStr),
+            Result = _{
+                ok: false,
+                error: ErrStr
+            }
         )
     ),
     json_write_dict(current_output, Result),
