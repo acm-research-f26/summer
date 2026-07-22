@@ -47,7 +47,11 @@ async def handler(socket):
                     for solution in returnedArr:
                         appendedValue = solution["bindings"]["X"]
                         solutionArr.append(appendedValue)
-                    await socket.send(json.dumps(solutionArr))
+                    datatToSendBack = {
+                        "message_type": "possible_actions",
+                        "possible_actions": solutionArr
+                    }
+                    await socket.send(json.dumps(datatToSendBack))
                 else:
                     raise ValueError(f"json message is invalid, got {jsonMessage['message_type']}")
                 

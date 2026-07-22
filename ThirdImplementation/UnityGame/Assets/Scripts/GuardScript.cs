@@ -1,11 +1,12 @@
 using UnityEngine;
-
+using System.Collections.Generic;
 public enum CurrentAction
 {
     MoveToPlayerOrLastPointSpotted = 1,
     RaiseAlarm = 2,
     InvestigateSound = 3,
-    WanderToRandomPlace = 4
+    WanderToRandomPlace = 4,
+    IdleWaitingForCommand = 5
 };
 
 public class GuardScript : MonoBehaviour
@@ -18,6 +19,8 @@ public class GuardScript : MonoBehaviour
     public AudioClip angryMusic;
     Rigidbody2D rb;
     AudioSource audiosource;
+
+    WebsocketScript socketScript;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -27,27 +30,44 @@ public class GuardScript : MonoBehaviour
         lastSound = transform.position;
         audiosource = GetComponent<AudioSource>();
 
-        movementSpeed = 5;
+        movementSpeed = 15;
 
         rb = GetComponent<Rigidbody2D>();
 
         GameManagerScript.lockdownInitiated += OnLockdown;
 
         GameManagerScript.soundOccurred += OnSound;
+
+        WebsocketScript.messageReceived += ProcessNewAction;
+
+        socketScript = GetComponent<WebsocketScript>();
     }
 
-    CurrentAction PickNewAction()
+    void ProcessNewAction(ReceivedMessage receivedMsg )
     {
-        CurrentAction chosenAction = (CurrentAction) Random.Range(1, 5);
-        if(chosenAction == CurrentAction.WanderToRandomPlace)
+        HashSet<string> actionSet = new HashSet<string>(receivedMsg.possible_actions);
+        if (actionSet.Contains("alarm_raised"))
         {
-            targetPosition = new Vector2(Random.Range(-73f, 180f), transform.position.y);
+            currentBehavior = CurrentAction.RaiseAlarm;
         }
+        else if(actionSet.Contains("find_player_last"))
+        {
+            currentBehavior = CurrentAction.MoveToPlayerOrLastPointSpotted;
+        }
+        else if(actionSet.Contains("investigate_noise"))
+        {
+            currentBehavior =CurrentAction.InvestigateSound;
+        }
+        else
+        {
+            currentBehavior = CurrentAction.WanderToRandomPlace;
+        }
+    }
 
-        Debug.Log($"chosen action is {chosenAction}");
-
-        return chosenAction;
-
+    void PickNewAction()
+    {
+        currentBehavior = CurrentAction.IdleWaitingForCommand;
+        socketScript.RequestAction();
     }
 
     void DoMoveAction()
@@ -56,7 +76,7 @@ public class GuardScript : MonoBehaviour
         rb.MovePosition(movingPosition);
         if(Vector2.Distance(transform.position, targetPosition) < 1f)
         {
-            currentBehavior = PickNewAction();
+            PickNewAction();
         }
     }
 
@@ -71,7 +91,7 @@ public class GuardScript : MonoBehaviour
                 break;
             case CurrentAction.RaiseAlarm:
                 GameManagerScript.instance.RaiseAlarm();
-                currentBehavior = PickNewAction();
+                PickNewAction();
                 break;
             case CurrentAction.InvestigateSound:
                 targetPosition = lastSound;

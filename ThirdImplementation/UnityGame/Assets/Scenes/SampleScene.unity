@@ -20,7 +20,7 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
+  m_AmbientSkyColor: {r: 0, g: 0, b: 0, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
   m_AmbientIntensity: 1
@@ -777,6 +777,7 @@ GameObject:
   m_Component:
   - component: {fileID: 189124796}
   - component: {fileID: 189124795}
+  - component: {fileID: 189124797}
   m_Layer: 0
   m_Name: Wall
   m_TagString: Untagged
@@ -858,6 +859,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &189124797
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 189124794}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f460bee539a15f46bff0cfd03a91c68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ChangeColorScript
+  newColor: {r: 0.4490565, g: 0.27412358, b: 0, a: 1}
 --- !u!1 &273119804
 GameObject:
   m_ObjectHideFlags: 0
@@ -1019,6 +1033,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 340055088}
+  - component: {fileID: 340055089}
   - component: {fileID: 340055087}
   m_Layer: 0
   m_Name: DangerWall
@@ -1101,6 +1116,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &340055089
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 340055086}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f460bee539a15f46bff0cfd03a91c68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ChangeColorScript
+  newColor: {r: 0.4792453, g: 0, b: 0, a: 1}
 --- !u!1 &468144716
 GameObject:
   m_ObjectHideFlags: 0
@@ -2072,6 +2100,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1362166153}
   - component: {fileID: 1362166152}
+  - component: {fileID: 1362166155}
   - component: {fileID: 1362166154}
   m_Layer: 0
   m_Name: Ground
@@ -2200,6 +2229,19 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 1, y: 1}
   m_EdgeRadius: 0
+--- !u!114 &1362166155
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1362166150}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f460bee539a15f46bff0cfd03a91c68, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ChangeColorScript
+  newColor: {r: 0.2981131, g: 0.2981131, b: 0.2981131, a: 1}
 --- !u!1 &1388695350
 GameObject:
   m_ObjectHideFlags: 0
@@ -3079,6 +3121,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1656210988}
+  - component: {fileID: 1656210992}
   - component: {fileID: 1656210990}
   - component: {fileID: 1656210987}
   - component: {fileID: 1656210986}
@@ -3433,6 +3476,18 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 2.47, y: 5.2}
   m_EdgeRadius: 0
+--- !u!114 &1656210992
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1656210984}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5343491c99b6c0848a24a07ead24ca54, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WebsocketScript
 --- !u!1 &1737138084
 GameObject:
   m_ObjectHideFlags: 0

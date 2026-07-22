@@ -45,6 +45,7 @@ public class GameManagerScript : MonoBehaviour
             await Task.Delay(23700);
             lockdownInitiated.Invoke();
             inLockdown = true;
+            RenderSettings.ambientLight = Color.black;
         }
     }
     public void WinGame()
