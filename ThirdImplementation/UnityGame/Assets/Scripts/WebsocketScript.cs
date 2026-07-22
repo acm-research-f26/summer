@@ -44,6 +44,7 @@ public class WebsocketScript : MonoBehaviour
             messageReceived.Invoke(parsedMsg);
         };
 
+        await websocket.Connect();
     }
 
     public async void RequestAction()
@@ -57,7 +58,6 @@ public class WebsocketScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
     }
 
     private async void OnApplicationQuit()

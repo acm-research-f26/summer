@@ -22,7 +22,7 @@ def run_scasp(query: str):
     return json.loads(result.stdout.strip())
 
 async def handler(socket):
-    shutil.copy("rules.pl", "rules_temp.pl")
+    shutil.copy(f"{current_dir}/rules.pl", f"{current_dir}/rules_temp.pl")
     with open("rules_temp.pl", "a") as factsFile:
         print("client connected!")
         try:
