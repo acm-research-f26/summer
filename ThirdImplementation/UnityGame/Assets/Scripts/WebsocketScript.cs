@@ -55,6 +55,13 @@ public class WebsocketScript : MonoBehaviour
         await websocket.SendText(jsonMsg);
     }
 
+    public async void SendNoise()
+    {
+        SentMessage theSentMessage = new SentMessage("heard_noise", "");
+        string jsonMsg = JsonUtility.ToJson(theSentMessage);
+        await websocket.SendText(jsonMsg);
+    }
+
     // Update is called once per frame
     void Update()
     {

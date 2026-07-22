@@ -129,6 +129,7 @@ public class GuardScript : MonoBehaviour
         if(Vector2.Distance(transform.position, location) < 50f)
         {
             lastSound = location;
+            socketScript.SendNoise();
         }
     }
 }
