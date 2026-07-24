@@ -38,6 +38,7 @@ def compute_comparison_results(
     y_train: pd.Series,
     y_test: pd.Series,
     shared_cv_splits: list[tuple[np.ndarray, np.ndarray]],
+    model_names: list[str] | None = None,
 ) -> tuple[pd.DataFrame, dict, dict]:
     """Build the comparison table and compute confusion matrices.
 
@@ -67,6 +68,9 @@ def compute_comparison_results(
     confusion_matrices : dict
         ``{(feature_set, model_name): np.ndarray confusion matrix}``
     """
+    if model_names is None:
+        model_names = ["XGBoost", "CatBoost", "TabPFN"]
+
     tier_labels_sorted = sorted(TIER_LABELS)
     tier_names = [TIER_LABELS[k] for k in tier_labels_sorted]
 
@@ -111,7 +115,7 @@ def compute_comparison_results(
     # Model rows
     for feature_set in feature_columns_by_set:
         data = split_data[feature_set]
-        for model_name in ["XGBoost", "CatBoost"]:
+        for model_name in model_names:
             key = (feature_set, model_name)
             pred = np.asarray(
                 trained_models[key].predict(data["X_test"])
@@ -158,6 +162,7 @@ def compute_feature_importance(
     feature_columns_by_set: dict[str, list[str]],
     random_seed: int = 42,
     n_repeats: int = 30,
+    model_names: list[str] | None = None,
 ) -> pd.DataFrame:
     """Collect native and permutation importance for every model.
 
@@ -180,20 +185,27 @@ def compute_feature_importance(
         Tidy frame with columns: feature_set, model, method, feature,
         importance, importance_std, rank_within_method.
     """
+    if model_names is None:
+        model_names = ["XGBoost", "CatBoost", "TabPFN"]
+
     importance_rows: list[dict] = []
 
     for feature_set, feature_columns in feature_columns_by_set.items():
         data = split_data[feature_set]
-        for model_name in ["XGBoost", "CatBoost"]:
+        for model_name in model_names:
             key = (feature_set, model_name)
             model = trained_models[key]
 
-            # Native importance
-            native_values = (
-                model.feature_importances_
-                if model_name == "XGBoost"
-                else model.get_feature_importance()
+            # Native importance — XGBoost and CatBoost only; skip for TabPFN
+            has_native = hasattr(model, "feature_importances_") or hasattr(
+                model, "get_feature_importance"
             )
+            if has_native:
+                native_values = (
+                    model.feature_importances_
+                    if hasattr(model, "feature_importances_")
+                    else model.get_feature_importance()
+                )
 
             # Permutation importance on held-out test set
             perm = permutation_importance(
@@ -206,30 +218,28 @@ def compute_feature_importance(
                 n_jobs=-1,
             )
 
-            for feature, native, perm_mean, perm_std in zip(
-                feature_columns,
-                native_values,
-                perm.importances_mean,
-                perm.importances_std,
-            ):
-                importance_rows.extend([
-                    {
+            for i, feature in enumerate(feature_columns):
+                perm_mean = perm.importances_mean[i]
+                perm_std = perm.importances_std[i]
+
+                if has_native:
+                    importance_rows.append({
                         "feature_set": feature_set,
                         "model": model_name,
                         "method": "Native",
                         "feature": feature,
-                        "importance": float(native),
+                        "importance": float(native_values[i]),
                         "importance_std": float("nan"),
-                    },
-                    {
-                        "feature_set": feature_set,
-                        "model": model_name,
-                        "method": "Permutation (test macro-F1)",
-                        "feature": feature,
-                        "importance": float(perm_mean),
-                        "importance_std": float(perm_std),
-                    },
-                ])
+                    })
+
+                importance_rows.append({
+                    "feature_set": feature_set,
+                    "model": model_name,
+                    "method": "Permutation (test macro-F1)",
+                    "feature": feature,
+                    "importance": float(perm_mean),
+                    "importance_std": float(perm_std),
+                })
 
     df = pd.DataFrame(importance_rows)
     df["rank_within_method"] = (
