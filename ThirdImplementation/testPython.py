@@ -29,6 +29,8 @@ async def handler(socket):
             async for message in socket:
                 jsonMessage = json.loads(message)
 
+                print(f"message type received: {jsonMessage["message_type"]}")
+
                 if(jsonMessage["message_type"] == "heard_noise"):
                     factsFile.write("noise(unknown).\n")
                 elif(jsonMessage["message_type"] == "vase_broken"):

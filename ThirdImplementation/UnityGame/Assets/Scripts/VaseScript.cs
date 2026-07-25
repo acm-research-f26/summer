@@ -8,11 +8,22 @@ public class VaseScript : MonoBehaviour
     AudioSource soundController;
     bool alreadyDestroyed;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
+
+    public bool seenDestroyed;
+
+    public string culprit;
+
+    public float timeSinceDestroyed;
+
+    public const float timeToFindCulprit = 5;
     void Start()
     {
         renderer = GetComponent<SpriteRenderer>();
         soundController = GetComponent<AudioSource>();
         alreadyDestroyed = false;
+        seenDestroyed = false;
+        culprit = "unknown";
+        timeSinceDestroyed = 0;
     }
 
     void OnTriggerEnter2D(Collider2D collision)

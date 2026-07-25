@@ -62,6 +62,34 @@ public class WebsocketScript : MonoBehaviour
         await websocket.SendText(jsonMsg);
     }
 
+    public async void SendAlarmRaised()
+    {
+        SentMessage theSentMessage = new SentMessage("alarm_raised", "");
+        string jsonMsg = JsonUtility.ToJson(theSentMessage);
+        await websocket.SendText(jsonMsg);
+    }
+
+    public async void SendBrokenDiamond()
+    {
+        SentMessage theSentMessage = new SentMessage("diamond_broken", "");
+        string jsonMsg = JsonUtility.ToJson(theSentMessage);
+        await websocket.SendText(jsonMsg);
+    }
+
+    public async void SendSuspiciousSighting()
+    {
+        SentMessage theSentMessage = new SentMessage("suspicious_sighting", "");
+        string jsonMsg = JsonUtility.ToJson(theSentMessage);
+        await websocket.SendText(jsonMsg);
+    }
+
+    public async void SendVaseBroken(string culprit)
+    {
+        SentMessage theSentMessage = new SentMessage("vase_broken", culprit);
+        string jsonMsg = JsonUtility.ToJson(theSentMessage);
+        await websocket.SendText(jsonMsg);
+    }
+
     // Update is called once per frame
     void Update()
     {

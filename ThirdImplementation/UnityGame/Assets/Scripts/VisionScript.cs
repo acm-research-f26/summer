@@ -19,7 +19,11 @@ public class VisionScript : MonoBehaviour
     {
         if(collision.gameObject.name == "Player")
         {
-            guard.lastPlayerPointSpotted = collision.gameObject.transform.position;
+            guard.OnSuspiciousSighting(collision.transform.position);
+        }
+        else if(collision.gameObject.name == "diamond")
+        {
+            guard.OnBrokenDiamond(collision.transform.position);
         }
     }
 }

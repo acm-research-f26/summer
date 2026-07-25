@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Net.Sockets;
 public enum CurrentAction
 {
     MoveToPlayerOrLastPointSpotted = 1,
@@ -21,6 +22,8 @@ public class GuardScript : MonoBehaviour
     AudioSource audiosource;
 
     WebsocketScript socketScript;
+
+    bool diamondAlreadySeenBroken;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -29,6 +32,7 @@ public class GuardScript : MonoBehaviour
         targetPosition = new Vector2(Random.Range(-73f, 180f), transform.position.y);
         lastSound = transform.position;
         audiosource = GetComponent<AudioSource>();
+        diamondAlreadySeenBroken = false;
 
         movementSpeed = 15;
 
@@ -91,6 +95,7 @@ public class GuardScript : MonoBehaviour
                 break;
             case CurrentAction.RaiseAlarm:
                 GameManagerScript.instance.RaiseAlarm();
+                socketScript.SendAlarmRaised();
                 PickNewAction();
                 break;
             case CurrentAction.InvestigateSound:
@@ -130,6 +135,25 @@ public class GuardScript : MonoBehaviour
         {
             lastSound = location;
             socketScript.SendNoise();
+        }
+    }
+
+    public void OnBrokenDiamond(Vector2 location)
+    {
+        if(!diamondAlreadySeenBroken)
+        {
+            diamondAlreadySeenBroken = true;
+            socketScript.SendBrokenDiamond();
+        }
+    }
+
+    public void OnSuspiciousSighting(Vector2 location)
+    {
+        lastPlayerPointSpotted = location;
+
+        if(lastPlayerPointSpotted.x > 90f)
+        {
+            socketScript.SendSuspiciousSighting();
         }
     }
 }
