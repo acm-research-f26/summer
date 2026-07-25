@@ -19,11 +19,15 @@ public class VisionScript : MonoBehaviour
     {
         if(collision.gameObject.name == "Player")
         {
-            guard.OnSuspiciousSighting(collision.transform.position);
+            guard.OnPlayerSighting(collision.transform.position);
         }
         else if(collision.gameObject.name == "diamond")
         {
             guard.OnBrokenDiamond(collision.transform.position);
+        }
+        else if (collision.gameObject.name.Contains("vase"))
+        {
+            guard.OnVaseSpotted(collision.gameObject.GetComponent<VaseScript>());
         }
     }
 }

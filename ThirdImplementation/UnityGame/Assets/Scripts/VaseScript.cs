@@ -2,16 +2,15 @@ using UnityEngine;
 
 public class VaseScript : MonoBehaviour
 {
+    public GuardScript guard;
     public Sprite destroyedSprite;
 
     SpriteRenderer renderer;
     AudioSource soundController;
-    bool alreadyDestroyed;
+    public bool alreadyDestroyed;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
-
-    public bool seenDestroyed;
-
-    public string culprit;
+    
+    public bool timeToFindCulpritPassed;
 
     public float timeSinceDestroyed;
 
@@ -21,9 +20,23 @@ public class VaseScript : MonoBehaviour
         renderer = GetComponent<SpriteRenderer>();
         soundController = GetComponent<AudioSource>();
         alreadyDestroyed = false;
-        seenDestroyed = false;
-        culprit = "unknown";
+
         timeSinceDestroyed = 0;
+
+        timeToFindCulpritPassed = false;
+    }
+
+    void Update()
+    {
+        if(alreadyDestroyed && timeSinceDestroyed < timeToFindCulprit)
+        {
+            timeSinceDestroyed += Time.deltaTime;
+            if(timeSinceDestroyed >= timeToFindCulprit)
+            {
+                timeToFindCulpritPassed = true;
+                guard.RemoveVaseFromMemory(this);
+            }
+        }
     }
 
     void OnTriggerEnter2D(Collider2D collision)

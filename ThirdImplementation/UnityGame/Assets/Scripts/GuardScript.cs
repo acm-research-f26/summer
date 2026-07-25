@@ -25,6 +25,10 @@ public class GuardScript : MonoBehaviour
 
     bool diamondAlreadySeenBroken;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
+
+    double lastPlayerTimeSpotted;
+
+    HashSet<VaseScript> vasesToBeChecking;
     void Start()
     {
         currentBehavior = CurrentAction.WanderToRandomPlace;
@@ -45,6 +49,10 @@ public class GuardScript : MonoBehaviour
         WebsocketScript.messageReceived += ProcessNewAction;
 
         socketScript = GetComponent<WebsocketScript>();
+
+        lastPlayerTimeSpotted = 0;
+
+        vasesToBeChecking = new HashSet<VaseScript>();
     }
 
     void ProcessNewAction(ReceivedMessage receivedMsg )
@@ -147,13 +155,46 @@ public class GuardScript : MonoBehaviour
         }
     }
 
-    public void OnSuspiciousSighting(Vector2 location)
+    public void OnPlayerSighting(Vector2 location)
     {
         lastPlayerPointSpotted = location;
+        lastPlayerTimeSpotted = Time.timeSinceLevelLoadAsDouble;
 
         if(lastPlayerPointSpotted.x > 90f)
         {
             socketScript.SendSuspiciousSighting();
+        }
+    }
+
+    public void OnVaseSpotted(VaseScript vase)
+    {
+        if(!vase.alreadyDestroyed)
+        {
+            return;
+        }
+        
+        if(vase.timeToFindCulpritPassed)
+        {
+            socketScript.SendVaseBroken("unknown");
+        }
+        else if(Time.timeSinceLevelLoadAsDouble - lastPlayerTimeSpotted <= 5)
+        {
+            socketScript.SendVaseBroken("player");
+            foreach (VaseScript otherVase in vasesToBeChecking)
+            {
+                socketScript.SendVaseBroken("player");
+                vasesToBeChecking.Remove(otherVase);
+            }
+        }
+
+        vasesToBeChecking.Add(vase);
+    }
+
+    public void RemoveVaseFromMemory(VaseScript chosenVase)
+    {
+        if (vasesToBeChecking.Contains(chosenVase))
+        {
+            vasesToBeChecking.Remove(chosenVase);
         }
     }
 }
