@@ -6,6 +6,7 @@ public class DiamondScript : MonoBehaviour
     SpriteRenderer renderer;
 
     AudioSource audioController;
+    public bool isBroken;
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -14,6 +15,7 @@ public class DiamondScript : MonoBehaviour
         audioController = GetComponent<AudioSource>();
         renderer.enabled = false;
         LeverScript.leverPressed += OnLeverPress;
+        isBroken = false;
     }
 
     void OnTriggerEnter2D(Collider2D collision)
@@ -21,6 +23,7 @@ public class DiamondScript : MonoBehaviour
         if(collision.gameObject.name == "Player" && GameManagerScript.instance.hasHammer && GameManagerScript.instance.leverPressed && !GameManagerScript.instance.diamondStolen)
         {
             renderer.sprite = destroyedSprite;
+            isBroken = true;
             GameManagerScript.instance.diamondStolen = true;
             audioController.Play();
             GameManagerScript.soundOccurred.Invoke(transform.position);

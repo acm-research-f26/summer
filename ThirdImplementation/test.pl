@@ -43,7 +43,7 @@ player_acting_sussy :- (num_broken_vases_by_player(Count), Count > 1).
 is_valid(find_player_last) :- player_seen, player_acting_sussy.
 is_valid(investigate_noise) :- noise(_).
 
-is_valid(wander_randomly) :- not alarm_raised.
+is_valid(wander_randomly).
 
 chosen_action(Action) :- is_valid(Action).
 

@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using System.Net.Sockets;
 public enum CurrentAction
 {
     MoveToPlayerOrLastPointSpotted = 1,
@@ -23,10 +22,14 @@ public class GuardScript : MonoBehaviour
 
     WebsocketScript socketScript;
 
+    double retrieveActionRtt;
+
     bool diamondAlreadySeenBroken;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
 
     double lastPlayerTimeSpotted;
+
+    double requestActionTime;
 
     HashSet<VaseScript> vasesToBeChecking;
     void Start()
@@ -53,27 +56,58 @@ public class GuardScript : MonoBehaviour
         lastPlayerTimeSpotted = -1;
 
         vasesToBeChecking = new HashSet<VaseScript>();
+
+        retrieveActionRtt = 0;
+
+        requestActionTime = 0;
     }
 
     void ProcessNewAction(ReceivedMessage receivedMsg)
     {
+        double totalTime = Time.timeSinceLevelLoadAsDouble - requestActionTime;
+
+        retrieveActionRtt = retrieveActionRtt * 0.95f + totalTime * 0.05f;
+
+        Debug.Log($"New rtt is: {retrieveActionRtt}");
+        
         HashSet<string> actionSet = new HashSet<string>(receivedMsg.possible_actions);
-        if (actionSet.Contains("alarm_raised"))
+        if (actionSet.Contains("raise_alarm"))
         {
             currentBehavior = CurrentAction.RaiseAlarm;
         }
-        else if(actionSet.Contains("find_player_last"))
+        else 
         {
-            currentBehavior = CurrentAction.MoveToPlayerOrLastPointSpotted;
-        }
-        else if(actionSet.Contains("investigate_noise"))
-        {
-            currentBehavior =CurrentAction.InvestigateSound;
-        }
-        else
-        {
-            currentBehavior = CurrentAction.WanderToRandomPlace;
-            targetPosition = new Vector2(Random.Range(-73f, 180f), transform.position.y);
+            float findPlayerLastProb = 0;
+            if (actionSet.Contains("find_player_last"))
+            {
+                findPlayerLastProb += 45;
+            }
+            float investigateNoiseProb = findPlayerLastProb;
+            if(actionSet.Contains("investigate_noise"))
+            {
+                investigateNoiseProb += 35;
+            }
+            float wanderProb = investigateNoiseProb;
+            if(actionSet.Contains("wander_randomly"))
+            {
+                wanderProb = 100;
+            }
+
+            float roll = Random.Range(0f, wanderProb);
+
+            if(roll <= findPlayerLastProb)
+            {
+                currentBehavior = CurrentAction.MoveToPlayerOrLastPointSpotted;
+            }
+            else if(roll <= investigateNoiseProb)
+            {
+                currentBehavior = CurrentAction.InvestigateSound;
+            }
+            else
+            {
+                targetPosition = new Vector2(Random.Range(-73f, 180f), transform.position.y);
+                currentBehavior = CurrentAction.WanderToRandomPlace;
+            }
         }
     }
 
@@ -82,13 +116,14 @@ public class GuardScript : MonoBehaviour
         if (currentBehavior == CurrentAction.IdleWaitingForCommand) return;
         currentBehavior = CurrentAction.IdleWaitingForCommand;
         socketScript.RequestAction();
+        requestActionTime = Time.timeSinceLevelLoadAsDouble;
     }
 
     void DoMoveAction()
     {
         Vector2 movingPosition = Vector2.MoveTowards(transform.position, new Vector2(targetPosition.x, transform.position.y), movementSpeed * Time.deltaTime);
         rb.MovePosition(movingPosition);
-        if(Vector2.Distance(transform.position, targetPosition) < 1f)
+        if(Vector2.Distance(transform.position, targetPosition) < 3.5f)
         {
             PickNewAction();
         }

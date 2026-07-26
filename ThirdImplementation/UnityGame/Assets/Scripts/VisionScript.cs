@@ -21,7 +21,7 @@ public class VisionScript : MonoBehaviour
         {
             guard.OnPlayerSighting(collision.transform.position);
         }
-        else if(collision.gameObject.name == "diamond")
+        else if(collision.gameObject.name == "diamond" && collision.GetComponent<DiamondScript>().isBroken)
         {
             guard.OnBrokenDiamond(collision.transform.position);
         }

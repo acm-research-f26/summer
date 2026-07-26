@@ -386,7 +386,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9abe62891f25734abd2d9b5733e9ad8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VaseScript
-  guard: {fileID: 0}
+  guard: {fileID: 1656210990}
   destroyedSprite: {fileID: 21300000, guid: b6ffaba344f15e84f9aec01b76d05230, type: 3}
   alreadyDestroyed: 0
   timeToFindCulpritPassed: 0
@@ -1005,7 +1005,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9abe62891f25734abd2d9b5733e9ad8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VaseScript
-  guard: {fileID: 0}
+  guard: {fileID: 1656210990}
   destroyedSprite: {fileID: 21300000, guid: b6ffaba344f15e84f9aec01b76d05230, type: 3}
   alreadyDestroyed: 0
   timeToFindCulpritPassed: 0
@@ -2035,7 +2035,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9abe62891f25734abd2d9b5733e9ad8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VaseScript
-  guard: {fileID: 0}
+  guard: {fileID: 1656210990}
   destroyedSprite: {fileID: 21300000, guid: b6ffaba344f15e84f9aec01b76d05230, type: 3}
   alreadyDestroyed: 0
   timeToFindCulpritPassed: 0
@@ -2289,7 +2289,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9abe62891f25734abd2d9b5733e9ad8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VaseScript
-  guard: {fileID: 0}
+  guard: {fileID: 1656210990}
   destroyedSprite: {fileID: 21300000, guid: b6ffaba344f15e84f9aec01b76d05230, type: 3}
   alreadyDestroyed: 0
   timeToFindCulpritPassed: 0
@@ -2543,7 +2543,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9abe62891f25734abd2d9b5733e9ad8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VaseScript
-  guard: {fileID: 0}
+  guard: {fileID: 1656210990}
   destroyedSprite: {fileID: 21300000, guid: b6ffaba344f15e84f9aec01b76d05230, type: 3}
   alreadyDestroyed: 0
   timeToFindCulpritPassed: 0
@@ -3443,7 +3443,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9abe62891f25734abd2d9b5733e9ad8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VaseScript
-  guard: {fileID: 0}
+  guard: {fileID: 1656210990}
   destroyedSprite: {fileID: 21300000, guid: b6ffaba344f15e84f9aec01b76d05230, type: 3}
   alreadyDestroyed: 0
   timeToFindCulpritPassed: 0
@@ -3948,6 +3948,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DiamondScript
   destroyedSprite: {fileID: 2900814736173941088, guid: f6b2898fdc732604f907a75abd3ac5e6, type: 3}
+  isBroken: 0
 --- !u!61 &1477529478
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -4372,7 +4373,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9abe62891f25734abd2d9b5733e9ad8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VaseScript
-  guard: {fileID: 0}
+  guard: {fileID: 1656210990}
   destroyedSprite: {fileID: 21300000, guid: b6ffaba344f15e84f9aec01b76d05230, type: 3}
   alreadyDestroyed: 0
   timeToFindCulpritPassed: 0
@@ -5282,7 +5283,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e9abe62891f25734abd2d9b5733e9ad8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VaseScript
-  guard: {fileID: 0}
+  guard: {fileID: 1656210990}
   destroyedSprite: {fileID: 21300000, guid: b6ffaba344f15e84f9aec01b76d05230, type: 3}
   alreadyDestroyed: 0
   timeToFindCulpritPassed: 0
