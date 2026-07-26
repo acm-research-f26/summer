@@ -9,6 +9,7 @@ This project uses the s(CASP) programming language, an offshoot of logical progr
 
 In this project, I constructed a test game where you are a thief who must steal a diamond from a high profile mall and escape, without their best guard Tung Tung Sahur (yes actually) noticing you. The Tung Sahur guard decides what to do by collecting facts about the world through 'sensory' data, and then gettign a list of possible actions through tis 'actuators' that decide what actions are possible given the facts. This allows it to learn to investgiate potentially suspicious spots, raise an alarm to put the museum under lockdown, and chase the player if they're acting suspicious.
 
+<img width="886" height="442" alt="image" src="https://github.com/user-attachments/assets/9d35de71-0587-4ea0-bfbe-3c605a5c05bb" />
 
 
 ## 🎯 Motivation
