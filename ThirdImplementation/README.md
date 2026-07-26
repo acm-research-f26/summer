@@ -13,23 +13,70 @@ In this project, I constructed a test game where you are a thief who must steal 
 
 
 ## 🎯 Motivation
+The main motivation was to basically show how s(CASP) can be used effectively for game AI. As mentioend before, most game AI doesn't use logical programmming nor Answer Set Programming. Typically what will be used is symbolic AI (like behavior trees or finite state machines), or more increasingly Reinforcement Learning (such as via models like PPO and transformers). Additionally, I just wanted to gain more experience with s(CASP) usage since it's been a few semesters since I've used it, and also wanted to practicec created a game myself to see how hard that will be for my subordinates once the semester begins.
 
 ## 🧩 Novelty
+The main novelty is in bringing ASP to game AI, as that's something that has almost never been doen before. The paper has done it, but I couldn't fine a ton more examples of it being done. As far as I know, it hasn't been done either with s(CASP) in particular too, making this project novel in that regard (well at least, nothign was published on this). 
+
+What makes s(CASP) unique among other ASP languages is its lack of grounding variables (where it converts all unknown variables to constants before solving the query) and its ability to explain its derivations via justification trees. The former matters because when other languages ground variables, they introduce quite a few problems, such as reducing felxibility for problems that have a less defined domain and constraints as well as being stuck on normally illogical problems. The latter can be interesting in how it can let the AI explain its reasnoing, which can matter greatly in say cases of social deduction games where the AI must explain how exactly it determined a player to be suspicious.
 
 ## 🧠 Methodology
-1. **Environment Construction**:
+1. **Game Construction**:
+First was obviously setting the actual game up. For this I used Unity as I wanted to actually build the game myself this tiem, and see just how long that would take exactly. I also had to find a way to find a balance between making the game complex enough to test what I wanted while making it simple enough to not have implementation take forever. In the end, I decided to go with a stealth game where the primary 'facts' the AI would store would be through its hearing and vision, as that seemed the easiest.
 
-2. **RL Setup**:
+As for why I decided Triple T Sahur should be the enemy, don't ask why.
 
-3. **Implementing The MCPS Side**:
+I decided to make the objective to steal the diamond and escape, while having steps to do each part to make it a bit more complex on the user side. For instance, to get the diamond you need to first flip a lever to get the diamond to be revealed, and then find a hammer to smash its casing. Then to escape, you can run to the main museum entrance/exit door to escape if Triple T hasn't raised the alarm. If he has though, obvioiusly now the building is on lockdown, so you have to find another way out. Conveniently, it seems on the other side of the map a hole was blown through the wall allowing you to escape. Essentially this allows for gameplay to not be entirely straightforward, with multiple objectives at play to service the main goal.
+
+Of course also, if the game was so simple as just collecting the items and escaping with no way for Triple T to get onto you then that wouldn't be very difficult, so I needed to add mechanics to spice up the game. First, I made it so the lever you must pull is in an 'employees only' area of the map, so that if you are there while triple T sees you, he'll note you as tresspassing and update his AI accordingly. Additionally, I decided to make it so Tung could hear noises around the map, mainly triggered by knocking over vases. If he sees you knock over multiple vases he'll naturally get suspicious of you. Of course, breaking the diamond casing also makes noise. These two aspects add a bit more mechanical depth to the game.
+
+2. **Deciding the AI Logic**:
+Next was of course actually building how the AI will determine its next actions and how it will collect data bout the world. With s(CASP) we have one file "test.pl" that defines all the general constraints and queries possible for the game, and then a "rules_temp.pl" file what contains bascally all the data that Tung The Guard has gathered. We store this facts quite simply, as things such as "alarm_raised", or "noise()". The most complex of these rules is "vase_broken(culprit)", where that culprit parameter is wheover has broken that vase. It could be the player if the Big Sahur saw him break the vase (or right after he broke the vase), or it could be unknown if the guard only stumbles on the vase after quite a while.
+
+of course the main meat is in test.pl where we define the general logic rules of what Tung can do. I decided that it caan choose between 4 possible actions: wandering randomly, going to the last sound it heard, going to the last place it spawned the player, or raising the alarm to send the building on lockdown. We define whether it would make sense or not logically for Triple T to do any of these following actions with our rules. Most of them are pretty straightforward (which is one of the best parts about writing ASP AI, that being that its intuitive to code what the AI should do) so I won't explain all the actions, but for instance we decide whether or not Tung can raise the alarm by first if the alarm is not already raised, and then if either the diamond is seen broken or if a fair number of suspicious things have already occured.
+
+3. **Integrating the s(CASP) side with Unity**:
+First I should explain what the paper does for communication between the ASP language and Unity. It has a 3 layer architecture, where at the top is the game layer that stores the 'sensory' data that the AI entity is receiving about the world, and also handles translated actions/plans received by the ASP language into actual commands that the AI runs in-game. At the bottom is the layer that directly sends requests to the ASP language, either to add facts learned via it's 'senses' or to send requests for what actions/plans to execute next. The middle layer is a middle ground between the two that buffers data going back and forth.
+
+The initial plan was to implement a system similar to this one but with s(CASP), however I found out this wouldn't really be possible because the ASP engine that the ThinkEngine module (the Unity library that this paper introduces) uses doesn't support easily just swapping out ASP languages, at least not with s(CASP).
+
+I couldn't implement a lot of their things by scratch such as their multiple 'brains' or execution of plans, but I was able to implement one thing that they had, which was the idea of sending senses to the ASP system to be stored as facts, and requesting actions to serve as the actuators that would then drive the AI's actions.
+
+For resolving the issue of communicating between C# in Unity and the sCASP language, I created a simple Python server on the same computer that would create a Websocket connection to unity, so the requests for storing facts and retrieving actions could travel through that socket. Then, Python would use the subprocesses library to create a bash command to run s(CASP (as currently I only have it set up so that you can run s(CASP) from the terminal)), and store the results that are printed out to be returned.
+
+As for how the senses were implemented, it's quite simple. For vision, I created a 'vision' Gameobject for the guard that was just a cone object, and whenever anything would touch the cone I'd send back the object touched so that the guard script could process it and decide if any facts need to be stored. For sound, all I did was whenever an object makes a sound it triggerd a Unity event that the guard script listens to, which causes it to immedietly run a certain method, allowing it to handle that sound and even check if it was too far away. 
+
+For how actions were implemented ,that was quite simple. I just store the current action as part of the guard script, request a new action when the current action finishes, and update the current action when the new possible actions arrive. If there's multiple possible actions, one is selected stochastically based on what makes the most sense in that situation (so for instance if you can raise the alarm, clearly that should be done immedietly so it has the highest priority). Once the action is decided, we can code the logic for that action just like any regular game AI.
 
 4. **Results And Evaluation**:
+There were only really 2 main results to evaluate. First was if the system actually worked properly, and second was how long the storing of facts and requests for actions took. For the first part, I was able to test the game by making different actions and seeing if the AI would respond accordingly, and it always seemed to do so correctly, so I think this was good.
+
+For the second part, I didn't have anything to measure it against but I decided to just go ahead and measure it anyways. How I measured it was Return Trip Time from sending the request to receiving it. Specifically, I measured the time from sending the request for an action to receiving back the possible actions. I used rolling accuracy to get an ideal average for this that can flexibly change as the game goes on, and measured time in seconds. What I found was that on average, it seems it took around ~523 milliseconds to decide what it should do next. The socket communication was barely a bottleneck (especially since it was on my own device), as that was maybe taking about 5-10 ms at most. The main botlteneck seemed to be with making the query itself, which was honeslty likely not because of the time to process the query but instead to call creating the task from the terminal, as I feel that's the likely bottleneck. I'm unsure how I'd test this though exactly. Either way 500 ms isn't the end of the world for deciding what an AI should do.
+
+Overall though I do think that using s(CASP) for when an AI needs to make quick reactive decisions (like how the paper has as one of the types of actions) doesn't make too much sense as that could be something better decided by Unity, while an ASP language would be better at long term planning and deductions of what to shoot for next.
 
 ## 🌍 Impact
+Overall, the main impact of this project will be in showing how s(CASP) can legitimately be used for game AI fairly well, as I ran into no errors or bugs with the AI (albeit it was quite simplistic) and the runtime was definietely acceptable. Additionally, the paper attempted to show how ASP could work specifically with the game Space Invaders, meanwhile I feel like this game better shows it spotential in how it can easily gather facts and reason about what to do given those facts.
 
 #### Future Work
+There is quite a bit of future work that I'd like to do. First is to expand the game such that more would need to be done on the AI side. Right now for instance the AI has only 4 possible actions and only a few facts which it can store, which wouldn't be a good enough justification to use this system, where it tends to shine when its hard to define how to solve a problem exactly (or in this case, how to decide what the guard should do). We can tackle this by adding a lot more NPCs for instance which can get into their own shenanigans, and then the guard would have to decide out of which of these is the actual thief trying to steal the diamond. We'd also just want to add a lot more different types of facts that can be stored. For instance, one flaw right now is that when Triple T investigates a noise, it doesn't mark that  it's already investigated that nosie and found nothing, meaning it could continue to go back to that noise again and again. We can maybe fix this by deleting that fact once we reached it, but then we'd need to identify different noises by an ID and find ways to delete lines efficiently from a file. Another thing that'd be great is to have long term planning returned as what to do next. The paper was able to do this by defining a plan as a series of actiosn to execute in order, and this is something we can also add to our system. Maybe we can introduce different 'states' that the guard is in, such as on high alert or instead related.
+
+Overall though the main really interesting avenue that we'd want to explore regarding s(CASP) in games is, I feel, how well it can do in settinsg where it must deduce things. ASP is built on the idea of building up facts to then make queries, which lends it self perfectly to social deduciton games, where the AI could collect facts about the players that stay over time, and use logic to decide who to trust and who to not. The main thing that remains to be answered though is how complex the game would have to get such that we'd want to use s(CASP) over more traditional systems like RL, and if a game having such complexities can even be realistically expected.
+
+Finally as a final note, I'd just like to improve the game here to be more mechanically itneresting, as while it isn't so simple as take the diamond and leave, there's almost no depth involved. If we're going to show how s(CASP) can be used in game AI, we nee dto also show how a game that's reliant on s(CASP)'s AI would actually be fun to play as well, obviously.
 
 **Additional Sources:**
-- The actual paper: 
+- The actual paper: https://ieee-cog.org/2022/assets/papers/paper_119.pdf
 
-**Setup Guide:**
+**Setup Guide:** 
+There are quite a few steps you'd need to take for setting up this one.
+
+First is setting up Unity. You'd need to install Unity version 6000.3.9f1 (which you can do here https://unity.com/download), and make sure you download that version. Then, you can go to the projects page, click the + button, then click "import project from disk", and click on this "UnityGame" folder to import it. Then theoretically just clickign on it in the projects tab should work.
+
+Second is settupg up the python server. On the same machine, just run the python file "testPython.py", though make sure you install the proper libraries. You can do so by doing "pip install websockets" from the terminal.
+
+Then just make sure you run the python file first, then just click the play button on Unity.
+
+Though, before you can actually test this you need to do the hardest part: installing s(CASP). You can do so from this link https://www.swi-prolog.org/download/stable, then clicking the small button labeled "show all files" under all the versions, and then installing version 9.2.5-1. From there, once you made sure it's in your path, you'd want to honestly just follow any of these instructions mentioned here cause it'd a arudious process. Mainly just the last message: https://claude.ai/share/55794b6f-d862-4d4f-bdc7-3ab1713e27de. 
+
+If you run into any errors let me knkow, I can alternatively directly record a demo so you can view it too.

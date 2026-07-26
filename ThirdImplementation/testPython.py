@@ -4,6 +4,7 @@ import os
 import asyncio
 import shutil
 import websockets
+import time
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 prolog_file = os.path.join(current_dir, "test.pl")
@@ -23,6 +24,8 @@ def run_scasp(query: str):
 
 async def handler(socket):
     shutil.copy(f"{current_dir}/rules.pl", f"{current_dir}/rules_temp.pl")
+
+    rtt = 0
     with open("rules_temp.pl", "a") as factsFile:
         print("client connected!")
         try:
@@ -46,7 +49,12 @@ async def handler(socket):
                 elif(jsonMessage["message_type"] == "player_seen"):
                     factsFile.write("player_seen.\n")
                 elif(jsonMessage["message_type"] == "get_action"):
+                    startTime = time.time()
                     returnedDict = run_scasp("chosen_action(X)")
+                    endTime = time.time()
+                    
+                    rtt = 0.95 * rtt + 0.05 * (endTime - startTime)
+                    print(f"current rtt here is {rtt}")
                     returnedArr = returnedDict["solutions"]
                     solutionArr = []
                     for solution in returnedArr:
