@@ -30,7 +30,9 @@ num_broken_vases_by_player(Count) :-
     findall(_, broken_vase(player), BrokenByPlayer),
     true_length(BrokenByPlayer, Count).
 
-is_valid(raise_alarm) :- not alarm_raised, diamond_saw_broken, num_suspicious_things(Count), Count > 2.
+is_valid(raise_alarm) :- not alarm_raised, num_suspicious_things(Count), Count > 2.
+
+is_valid(raise_alarm) :- diamond_saw_broken, not alarm_raised.
 
 player_acting_sussy :- player_in_restricted_area.
 

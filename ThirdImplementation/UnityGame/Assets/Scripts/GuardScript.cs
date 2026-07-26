@@ -50,12 +50,12 @@ public class GuardScript : MonoBehaviour
 
         socketScript = GetComponent<WebsocketScript>();
 
-        lastPlayerTimeSpotted = 0;
+        lastPlayerTimeSpotted = -1;
 
         vasesToBeChecking = new HashSet<VaseScript>();
     }
 
-    void ProcessNewAction(ReceivedMessage receivedMsg )
+    void ProcessNewAction(ReceivedMessage receivedMsg)
     {
         HashSet<string> actionSet = new HashSet<string>(receivedMsg.possible_actions);
         if (actionSet.Contains("alarm_raised"))
@@ -73,11 +73,13 @@ public class GuardScript : MonoBehaviour
         else
         {
             currentBehavior = CurrentAction.WanderToRandomPlace;
+            targetPosition = new Vector2(Random.Range(-73f, 180f), transform.position.y);
         }
     }
 
     void PickNewAction()
     {
+        if (currentBehavior == CurrentAction.IdleWaitingForCommand) return;
         currentBehavior = CurrentAction.IdleWaitingForCommand;
         socketScript.RequestAction();
     }
@@ -126,6 +128,8 @@ public class GuardScript : MonoBehaviour
         {
             transform.localScale = new Vector2(-1, transform.localScale.y);
         }
+
+        Debug.Log($"Current behavior is: {currentBehavior}");
     }
 
     void OnLockdown()
@@ -158,6 +162,10 @@ public class GuardScript : MonoBehaviour
     public void OnPlayerSighting(Vector2 location)
     {
         lastPlayerPointSpotted = location;
+        if(lastPlayerTimeSpotted == -1)
+        {
+            socketScript.SendPlayerSeen();
+        }
         lastPlayerTimeSpotted = Time.timeSinceLevelLoadAsDouble;
 
         if(lastPlayerPointSpotted.x > 90f)

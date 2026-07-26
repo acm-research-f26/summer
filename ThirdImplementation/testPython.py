@@ -35,6 +35,7 @@ async def handler(socket):
                     factsFile.write("noise(unknown).\n")
                 elif(jsonMessage["message_type"] == "vase_broken"):
                     factsFile.write(f"broken_vase({jsonMessage['culprit']}).\n")
+                    print(f"culprit was {jsonMessage["culprit"]}")
                 elif(jsonMessage["message_type"] == "suspicious_sighting"):
                     factsFile.write(f"suspicious_sighting(player).\n")
                     factsFile.write("player_in_restricted_area.\n")
@@ -42,6 +43,8 @@ async def handler(socket):
                     factsFile.write("diamond_saw_broken.\n")
                 elif(jsonMessage["message_type"] == "alarm_raised"):
                     factsFile.write("alarm_raised.\n")
+                elif(jsonMessage["message_type"] == "player_seen"):
+                    factsFile.write("player_seen.\n")
                 elif(jsonMessage["message_type"] == "get_action"):
                     returnedDict = run_scasp("chosen_action(X)")
                     returnedArr = returnedDict["solutions"]
@@ -49,11 +52,12 @@ async def handler(socket):
                     for solution in returnedArr:
                         appendedValue = solution["bindings"]["X"]
                         solutionArr.append(appendedValue)
-                    datatToSendBack = {
+                    dataToSendBack = {
                         "message_type": "possible_actions",
                         "possible_actions": solutionArr
                     }
-                    await socket.send(json.dumps(datatToSendBack))
+                    print(f"data being sent back is: {dataToSendBack}")
+                    await socket.send(json.dumps(dataToSendBack))
                 else:
                     raise ValueError(f"json message is invalid, got {jsonMessage['message_type']}")
                 

@@ -90,9 +90,19 @@ public class WebsocketScript : MonoBehaviour
         await websocket.SendText(jsonMsg);
     }
 
+    public async void SendPlayerSeen()
+    {
+        SentMessage theSentMessage = new SentMessage("player_seen", "");
+        string jsonMsg = JsonUtility.ToJson(theSentMessage);
+        await websocket.SendText(jsonMsg);
+    }
+
     // Update is called once per frame
     void Update()
     {
+        #if !UNITY_WEBGL || UNITY_EDITOR
+        websocket.DispatchMessageQueue();
+        #endif
     }
 
     private async void OnApplicationQuit()
