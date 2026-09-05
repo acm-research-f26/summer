@@ -1,15 +1,6 @@
 :- use_module(library(scasp)).
 :- use_module(library(http/json)).
-
 :- consult('rules_temp.pl').
-
-% here's all the things i'd need to add:
-% on "noise", just whenever noise heard update that. pretty simple.
-% on vase break, on a cooldown just add 2 second time, of if that and that player is spotted within those 2 seconds, do broken_vase(player). Else if
-% vase is spotted much later, do broken_vase(unknown). also if broken_vase(player) also add suspicious_sighting(player).
-% when player seen in restricted area, do suspicious_sighting(player) to add that +1 to that, and then player_in_restricted_area true
-% on diamond seen broken, do diamond_saw_broken as true.
-% when alarm raised, do alarm_raised.
 
 true_length([], 0).
 true_length([_|T], N) :- true_length(T, N0), N is N0 + 1.
