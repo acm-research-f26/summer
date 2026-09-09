@@ -1,0 +1,84 @@
+# All tunable thresholds live here. No magic numbers in src/.
+seed: 1337
+
+compute:
+  n_workers: 4                          # 0 = cpu_count - 2; capped after the
+                                        # decimation sweep (3 extractions per patient,
+                                        # each holding several large arrays) exhausted
+                                        # system memory at 8 workers
+
+data:
+  root: "data/UMD/UMD"
+  mask_glob: "*_se[gq].nii.gz"          # F1: covers the 33 typo'd _seq files
+  demo_root: "data/demo"
+
+labels:
+  background: 0
+  wall: 1
+  cavity: 2
+  fibroid: 3
+  nabothian: 4
+
+spacing:
+  source_priority: ["dicom", "nifti"]   # F2: DICOM is authoritative
+  prefer_spacing_between_slices: true   # over SliceThickness when both present
+  # sanity bounds used by the Phase 1 exit gate
+  min_in_plane_mm: 0.20
+  max_in_plane_mm: 1.50
+  min_slice_mm: 3.00
+  max_slice_mm: 8.00
+  reject_unit_isotropic: true           # (1,1,1) is an unset-header artifact, never real
+
+body:
+  method: "closing"                     # closing | fill | alpha | hull(ablation-only)
+  closing_radius_mm: 5.0                # serosa envelope; element sized in mm -> anisotropy-aware
+  cavity_closing_radius_mm: 15.0        # bridges the dent a submucosal fibroid presses into the cavity
+  fill_slicewise: true                  # 2D per-slice fill after the 3D fill (see body.fill_holes)
+  keep_largest_component: true
+  adaptive_radius: true                 # scale the bridging radius with the fibroid
+  adaptive_radius_scale: 1.5            # multiples of the equivalent-sphere radius (tuned on phantoms)
+  min_closing_radius_mm: 3.0
+  max_closing_radius_mm: 25.0
+  max_volume_ratio_vs_union: 1.5        # Phase 2 exit gate
+
+fibroid:
+  min_volume_mm3: 100.0
+  connectivity: 1                       # scipy.ndimage 3D structure rank
+  contact_distance_mm: 1.0              # touching = within this physical distance ...
+  contact_distance_voxels: 3            # ... or this many in-plane voxels, whichever is larger
+  endometrium_fit_radius_mm: 15.0       # neighbourhood for fitting the endometrial surface
+  min_endometrium_fit_voxels: 30        # below this the surface fit is not trustworthy
+  min_contact_fraction: 0.01            # or this fraction of the fibroid past the surface
+
+figo:
+  intramural_threshold_pct: 50.0        # the clinically critical boundary
+  pedunculated_max_intramural_pct: 10.0 # types 0 / 7
+  type3_max_intracavitary_pct: 2.0      # type 3 abuts the endometrium but does not bulge in
+  include_type8: true                   # false -> exclude cervical/parasitic instead of bucketing
+  hybrid_separator: "-"
+
+uncertainty:
+  # Perturbations are anisotropic on purpose: in-plane the annotator worked on a
+  # ~0.45 mm grid, but between slices 4.4-6.6 mm apart nothing is sampled at all.
+  # Reconstruction is the whole cost: one per radius draw, and the mask draws
+  # riding on it are nearly free. 2x8 buys the same 16 samples for half the
+  # reconstructions as 4x4 did. Two radii bracket a term that shifts the estimate
+  # systematically rather than scattering it, so two is enough to bound it.
+  n_radius_draws: 2                     # bridging-radius scales (the costly axis)
+  n_mask_draws: 8                       # boundary perturbations reused per radius -> 16 samples
+  inplane_mm: 1.0                       # +/- this, uniform
+  through_plane_frac: 0.5               # +/- this fraction of the slice spacing (the dominant term)
+  radius_scale_range: [1.2, 1.8]        # brackets the tuned default of 1.5
+  ci_low_pct: 2.5
+  ci_high_pct: 97.5
+
+borderline:
+  band_pct: 10.0                        # |percent_intramural - 50| <= band -> borderline
+  use_ci_straddle: true                 # CI crossing 50 also flags borderline
+  cv_folds: 5
+  models: ["logistic", "random_forest", "gradient_boosting"]
+
+robustness:
+  decimation_patients: 100              # 0 = all 300; decimation costs 3x a full extraction
+  decimation_factors: [2, 3]
+  min_slices_trustworthy: [4, 6]
